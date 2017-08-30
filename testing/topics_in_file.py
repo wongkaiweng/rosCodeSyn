@@ -1,6 +1,6 @@
 import ast
 from collections import deque
-
+import traceback
 
 class FuncCallVisitor(ast.NodeVisitor):
     def __init__(self):
@@ -29,17 +29,21 @@ class FuncCallVisitor(ast.NodeVisitor):
             self.generic_visit(node)
 
 
-def get_topics_in_file(fname, msgType):
-    with open(fname) as f:
-        a = ast.parse(f.read())
+def get_topics_in_file(fname, msgTypeList):
     ret = []
-    for node in ast.walk(a):
-        if isinstance(node, ast.Call):
-            callvisitor = FuncCallVisitor()
-            callvisitor.visit(node.func)
-            if callvisitor.name == 'rospy.Publisher':
-                if len(node.args) > 1 and \
-                        isinstance(node.args[1], ast.Name) \
-                        and node.args[1].id == 'Twist':
-                    ret.append(node.args[0].s)
+    try:
+        with open(fname) as f:
+            a = ast.parse(f.read())
+        for node in ast.walk(a):
+            if isinstance(node, ast.Call):
+                callvisitor = FuncCallVisitor()
+                callvisitor.visit(node.func)
+                if callvisitor.name == 'rospy.Publisher':
+                    if len(node.args) > 1 and \
+                            isinstance(node.args[1], ast.Name) \
+                            and node.args[1].id in msgTypeList:
+                        ret.append(node.args[0].s)
+    except Exception as e:
+        traceback.print_exc()
+        print 'Directory: {0}'.format(fname)
     return ret
