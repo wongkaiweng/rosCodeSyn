@@ -2,6 +2,8 @@ import re
 import os
 import matplotlib.pyplot as plt
 import pandas as pd
+import sys
+import getpass
 
 # retrieve all python files
 #for root, dirs, files in os.walk(file_path):
@@ -92,7 +94,11 @@ def plot_distribution(df, target_msg_type, col_name='name'):
 
 def test_pub_and_sub():
     # with '/' at the end
-    file_path = "/Users/wongkaiweng/Dropbox/ros_examples/turtlebot/processed/"
+    if sys.platform == 'darwin':
+        file_path = "/Users/wongkaiweng/Dropbox/ros_examples/turtlebot/processed/"
+    else:
+        file_path = "/home/{0}/ros_examples/turtlebot/processed/".format(getpass.getuser())
+
     print "----------------\nTurtlebot\n----------------"
 
     sublisher_pair_list, publisher_pair_list =  retrieve_sub_and_pub_topic_msg_pair(file_path)
@@ -108,7 +114,11 @@ def test_pub_and_sub():
 
 
 def test_actionlib():
-    file_path = "/Users/wongkaiweng/Dropbox/ros_examples/UR5/processed/"
+    if sys.platform == 'darwin':
+        file_path = "/Users/wongkaiweng/Dropbox/ros_examples/UR5/semiprocessed/"
+    else:
+        file_path = "/home/{0}/ros_examples/UR5/semiprocessed/".format(getpass.getuser())
+
     print "--------------------\nUniversial Robots UR5\n--------------------"
 
     action_client_pair_list = retrieve_action_client_msg_pair(file_path)
