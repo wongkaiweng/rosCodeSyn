@@ -7,6 +7,7 @@ import logging
 import re
 
 import topics_in_file
+import parameters_in_file
 import logging_config
 test_logger = logging.getLogger("test_logger")
 
@@ -36,6 +37,26 @@ def retrieve_topic_names(file_path, msg_type, remove_slash=True):
                 topic_name_list.extend(file_topic_name_list)
 
     return topic_name_list
+
+def retrieve_parameters(file_path, msg_type):
+    """
+    Retrieve parameters based on a msg type
+    file_path: path to python files (not recursive)
+    msg_type: type of msg
+    """
+    msg_fields = {}
+    for root, dirs, files in os.walk(file_path):
+        # traverse all directories
+        for directory in dirs:
+            topic_name_list.extend(retrieve_topic_names(os.path.join(root, directory), msg_type))
+
+        # find all files
+        for file in files:
+            if file.endswith(".py"):
+                #find parameters with msg_type
+                msg_fields = parameters_in_file.get_parameters_in_file(os.path.join(root, file), msg_type)
+
+    return msg_fields
 
 def find_topic_name_distribution(name_list, col_name='name'):
     """
@@ -68,8 +89,13 @@ if __name__ == "__main__":
     if not args.msg_type:
       args.msg_type = ['geometry_msgs.msg.Twist','Twist']
 
-    print args.msg_type
     topic_name_list = retrieve_topic_names(args.file_path, args.msg_type)
 
+    msg_fields = retrieve_parameters(args.file_path, args.msg_type)
+    print "============\nParameters\n============"
+    print "Twist Data:{0}".format(msg_fields)
+
+    print args.msg_type
+    print "==================\nTopic Distribution\n=================="
     prob_dict = find_topic_name_distribution(topic_name_list)
     print prob_dict

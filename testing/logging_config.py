@@ -8,16 +8,16 @@ import ConfigParser
 import sys, os
 import time
 
-loggerLevel = {"test":"DEBUG"}
+loggerLevel = {"test":'2'}
 
 def setupLogging(loggerLevel=None):
     # Set up loggers for printing error messages
     class ColorLogFormatter(logging.Formatter):
         def __init__(self, *args, **kwds):
             super(ColorLogFormatter, self).__init__(*args, **kwds)
-            self.plain_formatter = logging.Formatter("%(asctime)s.%(msecs)3d %(levelname)5s[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s", "%H:%M:%S")
-            self.debug_formatter = logging.Formatter("%(asctime)s.%(msecs)3d %(levelname)5s[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s", "%H:%M:%S")
-            self.detailed_formatter = logging.Formatter("%(asctime)s.%(msecs)3d %(levelname)5s[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s", "%H:%M:%S")
+            self.plain_formatter = logging.Formatter("%(levelname)5s[%(filename)s:%(lineno)s] %(message)s", "%H:%M:%S")
+            self.debug_formatter = logging.Formatter("%(levelname)5s[%(filename)s:%(lineno)s ] %(message)s", "%H:%M:%S")
+            self.detailed_formatter = logging.Formatter("%(levelname)5s[%(filename)s:%(lineno)s] %(message)s", "%H:%M:%S")
 
         def colorize(self, level, string):
             if sys.platform in ['win32', 'cygwin']:
