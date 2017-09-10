@@ -54,7 +54,7 @@ class Scope():
 
 class ROSCodeVisitor(ast.NodeVisitor):
     def __init__(self):
-        self.ret = list()
+        self.ret = {}
         self.scopes = deque()
         self.scopes.append(Scope(None))
 
@@ -85,13 +85,14 @@ class ROSCodeVisitor(ast.NodeVisitor):
         callvisitor.visit(node.func)
         if callvisitor.name == 'rospy.Publisher':
             if len(node.args) > 1 and \
-                    isinstance(node.args[1], ast.Name):  # \
-                # and node.args[1].id in msgTypeList:
+                    isinstance(node.args[1], ast.Name):
+                msgType = node.args[1].id
+                if msgType not in self.ret: self.ret[msgType] = []
                 if isinstance(node.args[0], ast.Str):
-                    self.ret.append(node.args[0].s)
+                    self.ret[msgType].append(node.args[0].s)
                 elif isinstance(node.args[0],ast.Name):
                     if self.scopes[0].find(node.args[0].id):
-                        self.ret.extend(self.scopes[0].find(node.args[0].id))
+                        self.ret[msgType].extend(self.scopes[0].find(node.args[0].id))
                 elif isinstance(node.args[0],ast.Add):
                     pass
 
