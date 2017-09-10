@@ -43,7 +43,10 @@ class Scope():
             return None
 
     def add(self, name, value):
-        self.variables[name] = value
+        if name in self.variables:
+            self.variables[name].append(value)
+        else:
+            self.variables[name] = [value]
 
     def __str__(self):
         return str(self.variables)
@@ -66,16 +69,16 @@ class ROSCodeVisitor(ast.NodeVisitor):
         self.generic_visit(node)
         self.scopes.popleft()
 
-    def visit_If(self,node):
-        self.scopes.appendleft(Scope(self.scopes[0]))
-        for n in node.body:
-            self.visit(n)
-        self.scopes.popleft()
-        if hasattr(node,'orelse'):
-            self.scopes.appendleft(Scope(self.scopes[0]))
-            for n in node.orelse:
-                self.visit(n)
-            self.scopes.popleft()
+    # def visit_If(self,node):
+    #     self.scopes.appendleft(Scope(self.scopes[0]))
+    #     for n in node.body:
+    #         self.visit(n)
+    #     self.scopes.popleft()
+    #     if hasattr(node,'orelse'):
+    #         self.scopes.appendleft(Scope(self.scopes[0]))
+    #         for n in node.orelse:
+    #             self.visit(n)
+    #         self.scopes.popleft()
 
     def visit_Call(self, node):
         callvisitor = FuncCallVisitor()
@@ -88,18 +91,18 @@ class ROSCodeVisitor(ast.NodeVisitor):
                     self.ret.append(node.args[0].s)
                 elif isinstance(node.args[0],ast.Name):
                     if self.scopes[0].find(node.args[0].id):
-                        self.ret.append(self.scopes[0].find(node.args[0].id))
+                        self.ret.extend(self.scopes[0].find(node.args[0].id))
                 elif isinstance(node.args[0],ast.Add):
                     pass
 
 
-with open("test/jackal_auto_drive.py") as f:
-    # with open("topics_in_file.py") as f:
-    a = ast.parse(f.read())
-rv = ROSCodeVisitor()
-rv.visit(a)
-print(rv.scopes[0])
-print(rv.ret)
+# with open("test/jackal_auto_drive.py") as f:
+#     # with open("topics_in_file.py") as f:
+#     a = ast.parse(f.read())
+# rv = ROSCodeVisitor()
+# rv.visit(a)
+# print(rv.scopes[0])
+# print(rv.ret)
 
 
 def get_topics_in_file(fname, msgTypeList):
@@ -110,6 +113,9 @@ def get_topics_in_file(fname, msgTypeList):
         rv = ROSCodeVisitor()
         rv.visit(a)
         ret = rv.ret
+    except (IndentationError,SyntaxError) as e:
+        # traceback.print_exc()
+        print 'Compilation error: {0}'.format(fname)
     except Exception as e:
         traceback.print_exc()
         print 'Directory: {0}'.format(fname)
