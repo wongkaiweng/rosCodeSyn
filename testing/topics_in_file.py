@@ -106,7 +106,7 @@ class ROSCodeVisitor(ast.NodeVisitor):
 # print(rv.ret)
 
 
-def get_topics_in_file(fname, msgTypeList):
+def get_topics_in_file(fname):
     ret = []
     try:
         with open(fname) as f:
