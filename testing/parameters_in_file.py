@@ -26,7 +26,7 @@ def attribute_in_var_names_list(ast_attribute_obj, var_names_list):
     # check if part of attribute is a msgType Object
     if any([x in attributevisitor.name for x in var_names_list]):
         test_logger.log(2, "Save Parameter: TRUE in var_names_list:{0}".format(var_names_list))
-        attribute_name_list = attributevisitor.name.replace(x,'').split()
+        attribute_name_list = attributevisitor.name.replace(x+'.','').split('.')
         return True, attribute_name_list
     else:
         test_logger.log(2, "Save Parameter: FALSE in var_names_list:{0}".format(var_names_list))
@@ -84,8 +84,8 @@ def get_parameters_in_file(fname, msgTypeList, msg_fields = {}):
 
     except Exception as e:
         traceback.print_exc()
-        print 'Directory: {0}'.format(fname)
+        print 'Directory: {0}\n-----------'.format(fname)
 
-    test_logger.debug("var_names_list: {0}".format(var_names_list))
-    test_logger.debug("msg_fields: {0}".format(msg_fields))
+    test_logger.log(4, "var_names_list: {0}".format(var_names_list))
+    test_logger.log(4, "msg_fields: {0}".format(msg_fields))
     return msg_fields
