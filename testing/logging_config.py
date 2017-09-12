@@ -8,7 +8,7 @@ import ConfigParser
 import sys, os
 import time
 
-loggerLevel = {"test":'2'}
+loggerLevel = {"test":'DEBUG'}
 
 def setupLogging(loggerLevel=None):
     # Set up loggers for printing error messages
