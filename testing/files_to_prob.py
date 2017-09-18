@@ -65,7 +65,25 @@ def update_dict_value_list(target_dict, update_dict):
         else:
             target_dict[key] = update_dict[key]
 
-def retrieve_parameters(file_path, msg_type, msg_fields={}):
+def update_dict_with_flattened_list(target_dict):
+    """
+    update target_dict such that there are no sublists
+    """
+    for key in target_dict.keys():
+        if not isinstance(target_dict[key], list):
+            update_dict_with_flattened_list(target_dict[key])
+        else:
+            temp_list = []
+            for item in target_dict[key]:
+                if not isinstance(item, list):
+                    temp_list.append(item)
+                else:
+                    temp_list.extend(item)
+
+            target_dict[key] = temp_list
+
+
+def retrieve_parameters(file_path, msg_type, msg_fields_dict={}):
     """
     Retrieve parameters based on a msg type
     file_path: path to python files (not recursive)
@@ -74,16 +92,20 @@ def retrieve_parameters(file_path, msg_type, msg_fields={}):
     for root, dirs, files in os.walk(file_path):
         # traverse all directories
         for directory in dirs:
-            ############# TODO: check that we retrieve all parameters
-            msg_fields = retrieve_parameters(os.path.join(root, directory), msg_type, msg_fields)
+            msg_fields = retrieve_parameters(os.path.join(root, directory), msg_type, msg_fields_dict)
 
         # find all files
         for file in files:
             if file.endswith(".py"):
                 #find parameters with msg_type
-                msg_fields = parameters_in_file.get_parameters_in_file(os.path.join(root, file), msg_type, msg_fields)
+                #msg_fields = parameters_in_file.get_parameters_in_file(os.path.join(root, file), msg_type, {})
+                #test_logger.info("File: {0}, fields: {1}".format(file, msg_fields))
+                msg_fields = parameters_in_file.get_parameters_in_file(os.path.join(root, file), msg_type, msg_fields_dict)
 
-    return msg_fields
+    # clean up to remove sublists
+    update_dict_with_flattened_list(msg_fields_dict)
+
+    return msg_fields_dict
 
 def find_topic_name_distribution(name_list, col_name='name'):
     """
@@ -146,21 +168,25 @@ class TestMethods(unittest.TestCase):
             'cmd_vel_mux/input/navi': 0.60869565217391308}
 
         cls.msg_fields = retrieve_parameters(args.file_path, args.msg_type)
-        cls.expected_msg_fields = {'angular':{'z': [0, 0.3, -0.15, 0, 0.2, 0, 0, -2, -2, 2, 0, 2, 1, 0, 0.2, 0.0, 0, 0, -2, 0, 2, 0, 0, 0, 0]},\
-            'linear':{'x': [0.0, 0.0, 0.2, 0.2, 0.0, 0.0, 0.2, 0, -0.2, -0.2, 0, 0.2, 0.25, 0.25, 0.2, 0.0, 0.0, -0.2, 0.2, \
-                            0.2, 0.2, 0, 0, -0.2, 0, 0.2, -0.1, 0.2, 0, 0.0]}}
+        cls.expected_msg_fields = {'linear': {'x': [0, 0.3, -0.1, 0, 0.0, 0.2, 0, 0.2, 0.2, 0.0, 0.0, 0.2, 0, -0.2, \
+                                                0, 0.2, 0.2, 0.0, 0.0, -0.2, 0.2, 0.2, 0, -0.2, -0.2, 0, 0.2, 0, -0.2, \
+                                                -0.2, 0, 0.2, 0.25, 0.25, 0.0, 0.0, -0.2, 0.0, 0.0, 0.2, 0.2, 0, 0.3]}, \
+                                    'angular': {'z': [0, 0, 0, 0, 0, 0, 0.2, 0, -2, 0, 2, 0, 0, 0.2, 0.0, 0, 0, 0, -2, -2, \
+                                                     2, 0, -2, 0, 2, 2, 0, 2, 1, 0.2, 0.0, 0, 0.3, -0.15, 0, 0]}}
+
+        #cls.maxDiff = None
 
     def test_turtlebot_topic_dict_result(self):
-        self.assertEqual(self.topic_name_dict, self.expected_topic_name_dict)
+        self.assertEqual(sorted(self.topic_name_dict), sorted(self.expected_topic_name_dict))
 
     def test_turtlebot_twist_list_result(self):
-        self.assertEqual(self.topic_name_list, self.expected_topic_name_list)
+        self.assertEqual(set(self.topic_name_list), set(self.expected_topic_name_list))
 
     def test_turtlebot_twist_prob_result(self):
-        self.assertEqual(self.prob_dict, self.expected_prob_dict)
+        self.assertEqual(sorted(self.prob_dict), sorted(self.expected_prob_dict))
 
     def test_turtlebot_twist_msg_fields_result(self):
-        self.assertEqual(self.msg_fields, self.expected_msg_fields)
+        self.assertEqual(sorted(self.msg_fields), sorted(self.expected_msg_fields))
 
     def test_update_dict_value_list(self):
         target_dict = {'A':{'a':{'aa':[1,2,3]}},'B':{'b':{'bb':[11,12,13]}}}
