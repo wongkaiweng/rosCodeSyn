@@ -59,14 +59,14 @@ def save_redbardon_obj_to_file(red_obj, dest_file):
         f.write(red_obj.dumps())
 
 if __name__ == "__main__":
-    filename = "../Examples/jackal_to_turtlebot (auto_drive)/jackal_auto_drive.py"
+    filename = "files/jackal_auto_drive.py"
     dest_file = "files/code.py"
 
     #!! note the special string formating!
     target_topic_dict = {"Twist": '"/cmd_vel_short"', \
                          "geometry_msgs.msg.Twist": '"/cmd_vel_long"'}
-    #channel_type = "Publisher"
-    channel_type = "Subscriber"
+    channel_type = "Publisher"
+    #channel_type = "Subscriber"
 
     # create object
     red_obj = creat_redbaron_obj(filename)
