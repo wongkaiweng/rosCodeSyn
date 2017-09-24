@@ -121,8 +121,49 @@ def find_topic_name_distribution(name_list, col_name='name'):
     prob_df =  df.groupby(col_name).size() / len(df)
     test_logger.debug(df.groupby(col_name).size())
     test_logger.debug(prob_df)
+    test_logger.debug('------------------')
 
     return prob_df.to_dict()
+
+
+def get_best_topic_match_for_all_msg_types(file_path):
+    target_topic_dict = {}
+
+    topic_name_dict = retrieve_all_topics(file_path)
+
+    # Group topics
+    key_list, temp_list = [], []
+    topic_name_dict_keys = sorted(topic_name_dict.keys(), key=lambda x: x[::-1])
+    for x, y in zip(topic_name_dict_keys, topic_name_dict_keys[1:]):
+        if x in y:
+            temp_list.append(x)
+        else:
+            if not temp_list:
+                # TODO: what if we don't find Twist but it is technicaly the same as geometry_msgs.msg.Twist
+                key_list.append([x])
+            else:
+                temp_list.append(x)
+                key_list.append(temp_list)
+                temp_list = []
+
+
+    for msg_type_list in key_list:
+        # get all topics for that msg_type
+        topic_name_list = retrieve_topic_names_from_topic_dict(topic_name_dict, msg_type_list)
+
+        # find distribution
+        prob_dict = find_topic_name_distribution(topic_name_list)
+
+        # find the largest value and the key associated with it
+        sorted_prob_dict_values = sorted(prob_dict.values())
+        for topic_name, prob_value in prob_dict.iteritems():
+            if prob_value == sorted_prob_dict_values[-1]:
+                for msg_type in msg_type_list:
+                    target_topic_dict[msg_type] = topic_name
+
+
+    test_logger.debug("key_list:{0}".format(key_list))
+    return target_topic_dict
 
 
 class TestMethods(unittest.TestCase):
@@ -230,5 +271,12 @@ if __name__ == "__main__":
         print "==================\nTopic Distribution\n=================="
         prob_dict = find_topic_name_distribution(topic_name_list)
         print "Probability dictionary: {0}".format(prob_dict)
+
+
+        # changed approach.py in turtlebot
+        target_topic_dict = get_best_topic_match_for_all_msg_types(file_path)
+        print "==================\nTarget Topic Dictionary\n=================="
+        print target_topic_dict
+
 
 
