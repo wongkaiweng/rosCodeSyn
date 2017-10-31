@@ -76,11 +76,45 @@ class ROSCodeVisitor(ast.NodeVisitor):
         self.scopes.append(Scope(None))
         self.names_to_import_module = {}
 
+    def add_to_scope(self, name_obj, value_obj):
+        scope_name = None
+        scope_value = None
+        if isinstance(name_obj, ast.Name): # and isinstance(node.value, ast.Str):
+                scope_name = name_obj.id
+
+        # dot values
+        elif isinstance(name_obj, ast.Attribute): # and isinstance(node.value, ast.Str):
+            attrvisitor = FuncCallVisitor()
+            attrvisitor.visit(name_obj)
+            scope_name = attrvisitor.name
+
+        # name = str
+        if isinstance(value_obj, ast.Str):
+            scope_value = value_obj.s
+
+        # name to name
+        elif isinstance(value_obj, ast.Name):
+            if self.scopes[0].find(value_obj.id):
+                scope_value = self.scopes[0].find(value_obj.id)[0] # should be only the first element
+
+        # find valid assignment
+        if scope_name and scope_value:
+            self.scopes[0].add(scope_name, scope_value)
+            #print self.scopes[0]
+
     def visit_Assign(self, node):
-        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
-                and isinstance(node.value, ast.Str):
-            self.scopes[0].add(node.targets[0].id,node.value.s)
+        # assign target is a tuple
+        if isinstance(node.targets[0], ast.Tuple) and isinstance(node.value, ast.Tuple):
+            for idx, item in enumerate(node.targets[0].elts):
+                self.add_to_scope(item,node.value.elts[idx])
+
+        # ** can't deal with node.value is ast.Call. Can really call a function here
+
+        elif len(node.targets) == 1:
+            self.add_to_scope(node.targets[0], node.value)
+
         self.generic_visit(node)
+
 
     def visit_FunctionDef(self,node):
         self.scopes.appendleft(Scope(self.scopes[0]))
@@ -134,11 +168,22 @@ class ROSCodeVisitor(ast.NodeVisitor):
                     self.ret[msgType].append(node.args[0].s) #original
                     if SHORT_FLAG: self.ret[long_msgType].append(node.args[0].s) #short to long
                     if LONG_FLAG: self.ret[short_msgType].append(node.args[0].s) #long to short
+
                 elif isinstance(node.args[0],ast.Name):
                     if self.scopes[0].find(node.args[0].id):
                         self.ret[msgType].extend(self.scopes[0].find(node.args[0].id)) #original
                         if SHORT_FLAG: self.ret[long_msgType].extend(self.scopes[0].find(node.args[0].id)) #short to long
                         if LONG_FLAG: self.ret[short_msgType].extend(self.scopes[0].find(node.args[0].id)) #long to short
+
+                elif isinstance(node.args[0],ast.Attribute):
+                    attr_value_visitor = FuncCallVisitor()
+                    attr_value_visitor.visit(node.args[0])
+                    attr_name = attr_value_visitor.name
+                    if self.scopes[0].find(attr_name):
+                        self.ret[msgType].extend(self.scopes[0].find(attr_name)) #original
+                        if SHORT_FLAG: self.ret[long_msgType].extend(self.scopes[0].find(attr_name)) #short to long
+                        if LONG_FLAG: self.ret[short_msgType].extend(self.scopes[0].find(attr_name)) #long to short
+
                 elif isinstance(node.args[0],ast.Add):
                     pass
 
@@ -205,13 +250,13 @@ def get_topics_in_file(fname):
 
 if __name__ == "__main__":
     file = "files/jackal_auto_drive.py"
-    #with open(file) as f:
-    #    # with open("topics_in_file.py") as f:
-    #    a = ast.parse(f.read())
-    #rv = ROSCodeVisitor()
-    #rv.visit(a)
-    #print(rv.scopes[0])
-    #print(rv.ret)
-    #print(rv.names_to_import_module)
+    with open(file) as f:
+        # with open("topics_in_file.py") as f:
+        a = ast.parse(f.read())
+    rv = ROSCodeVisitor()
+    rv.visit(a)
+    print("Scope: {0}".format(rv.scopes[0]))
+    print("Topic dict: {0}".format(rv.ret))
+    print("Name to import module: {0}".format(rv.names_to_import_module))
     print("topics in file:{0}".format(get_topics_in_file(file)))
 
