@@ -9,7 +9,8 @@ import sys, os
 import time
 
 loggerLevel = {"test":'DEBUG',
-               "replacement":'DEBUG'}
+               "replacement":'DEBUG',
+               "transform":'DEBUG'}
 
 def setupLogging(loggerLevel=None):
     # Set up loggers for printing error messages
@@ -40,7 +41,8 @@ def setupLogging(loggerLevel=None):
             return self.colorize(record.levelname, precolor)
 
     loggers = {"test": logging.getLogger("test_logger"), \
-               "replacement": logging.getLogger("replace_logger")}
+               "replacement": logging.getLogger("replace_logger"),
+               "transform": logging.getLogger("transform_logger")}
 
     h = logging.StreamHandler()
     f = ColorLogFormatter()

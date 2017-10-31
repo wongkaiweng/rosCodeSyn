@@ -13,14 +13,25 @@ import parameters_in_file
 import logging_config
 test_logger = logging.getLogger("test_logger")
 
-def retrieve_topic_names(file_path, msg_type_list, remove_slash=True):
+def retrieve_topic_names(file_path, msg_type, remove_slash=True):
+    if isinstance(msg_type, list):
+        test_logger.warning("msg_type now is not a list. Using only the first element...")
+        msg_type = msg_type[0]
     topic_name_dict = retrieve_all_topics(file_path, remove_slash)
-    return retrieve_topic_names_from_topic_dict(topic_name_dict, msg_type_list)
+    return retrieve_topic_name_from_topic_dict(topic_name_dict, msg_type)
 
 def retrieve_topic_names_from_topic_dict(topic_name_dict, msg_type_list):
+    """
+    CHANGED: now handles aggregation in topics_in_file.get_topics_in_file
+             Do not use this function anymore.
+    """
+    test_logger.warning("This function is obselete. Use 'retrieve_topic_name_from_topic_dict' instead")
     # return only the msg_types of interest
     topics_for_msg_type_list = [topic_name_dict[msg_type] for msg_type in msg_type_list if msg_type in topic_name_dict.keys()]
     return [i for i in itertools.chain.from_iterable(topics_for_msg_type_list)]
+
+def retrieve_topic_name_from_topic_dict(topic_name_dict, msg_type):
+    return topic_name_dict[msg_type]
 
 def retrieve_all_topics(file_path, remove_slash=True):
     """
@@ -99,8 +110,8 @@ def retrieve_parameters(file_path, msg_type, msg_fields_dict={}):
             if file.endswith(".py"):
                 #find parameters with msg_type
                 #msg_fields = parameters_in_file.get_parameters_in_file(os.path.join(root, file), msg_type, {})
-                #test_logger.info("File: {0}, fields: {1}".format(file, msg_fields))
                 msg_fields = parameters_in_file.get_parameters_in_file(os.path.join(root, file), msg_type, msg_fields_dict)
+                #test_logger.debug("File: {0}, fields: {1}".format(file, msg_fields))
 
     # clean up to remove sublists
     update_dict_with_flattened_list(msg_fields_dict)
@@ -131,25 +142,8 @@ def get_best_topic_match_for_all_msg_types(file_path):
 
     topic_name_dict = retrieve_all_topics(file_path)
 
-    # Group topics
-    key_list, temp_list = [], []
-    topic_name_dict_keys = sorted(topic_name_dict.keys(), key=lambda x: x[::-1])
-    for x, y in zip(topic_name_dict_keys, topic_name_dict_keys[1:]):
-        if x in y:
-            temp_list.append(x)
-        else:
-            if not temp_list:
-                # TODO: what if we don't find Twist but it is technicaly the same as geometry_msgs.msg.Twist
-                key_list.append([x])
-            else:
-                temp_list.append(x)
-                key_list.append(temp_list)
-                temp_list = []
-
-
-    for msg_type_list in key_list:
-        # get all topics for that msg_type
-        topic_name_list = retrieve_topic_names_from_topic_dict(topic_name_dict, msg_type_list)
+    #** now long.topic.name and short.topic.name are grouped in topics_in_file.py
+    for topic, topic_name_list in topic_name_dict.iteritems():
 
         # find distribution
         prob_dict = find_topic_name_distribution(topic_name_list)
@@ -158,12 +152,37 @@ def get_best_topic_match_for_all_msg_types(file_path):
         sorted_prob_dict_values = sorted(prob_dict.values())
         for topic_name, prob_value in prob_dict.iteritems():
             if prob_value == sorted_prob_dict_values[-1]:
-                for msg_type in msg_type_list:
-                    target_topic_dict[msg_type] = topic_name
+                target_topic_dict[topic] = topic_name
 
-
-    test_logger.debug("key_list:{0}".format(key_list))
     return target_topic_dict
+
+
+def findDiff(d1, d2, path=""):
+    """
+    From https://stackoverflow.com/questions/27265939/comparing-python-dictionaries-and-nested-dictionaries
+    Check if two dictionaries are different from each other
+    """
+    diff = False
+    for k in d1.keys():
+        if not d2.has_key(k):
+            print path, ":"
+            print k + " as key not in d2", "\n"
+            diff = True
+        else:
+            if type(d1[k]) is dict:
+                if path == "":
+                    path = k
+                else:
+                    path = path + "->" + k
+                findDiff(d1[k],d2[k], path)
+            else:
+                if sorted(d1[k]) != sorted(d2[k]):
+                    print path, ":"
+                    print " - ", k," : ", d1[k]
+                    print " + ", k," : ", d2[k]
+                    diff = True
+
+    return diff
 
 
 class TestMethods(unittest.TestCase):
@@ -182,20 +201,34 @@ class TestMethods(unittest.TestCase):
         cls.msg_type_list = ['geometry_msgs.msg.Twist','Twist']
 
         cls.topic_name_dict = retrieve_all_topics(cls.file_path)
-        cls.expected_topic_name_dict = {'Sound': ['mobile_base/commands/sound', 'mobile_base/commands/sound', 'mobile_base/commands/sound'], \
-            'DigitalOutput': ['mobile_base/commands/digital_output', 'mobile_base/commands/digital_output'], \
-            'PoseStamped': ['move_base_simple/goal', 'move_base_simple/goal', 'move_base_simple/goal', 'move_base_simple/goal'], \
-            'String': ['range_data', 'range_data'], 'SoundRequest': ['robotsound', 'robotsound'], \
-            'UInt8': ['command_input'], \
-            'Twist': ['cmd_vel_mux/input/navi', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/navi', \
-                'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', 'mobile_base/commands/velocity', 'cmd_vel_mux/input/navi', \
-                'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', \
-                'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', 'mobile_base/commands/velocity', \
-                'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'mobile_base/commands/velocity', 'cmd_vel_mux/input/navi', \
-                'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi'], \
-            'Config': ['state_estimate', 'state_estimate']}
+        cls.expected_topic_name_dict =  {\
+        'geometry_msgs.msg.Twist': ['cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi',\
+                                     'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', \
+                                     'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', \
+                                     'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', \
+                                     'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', \
+                                     'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', \
+                                     'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', \
+                                     'mobile_base/commands/velocity', 'mobile_base/commands/velocity', 'mobile_base/commands/velocity'],\
+        'geometry_msgs.msg.PoseStamped': ['move_base_simple/goal', 'move_base_simple/goal', 'move_base_simple/goal', \
+                                         'move_base_simple/goal'], \
+        'DigitalOutput': ['mobile_base/commands/digital_output', 'mobile_base/commands/digital_output'], \
+        'PoseStamped': ['move_base_simple/goal', 'move_base_simple/goal', 'move_base_simple/goal', 'move_base_simple/goal'], \
+        'std_msgs.msg.String': ['range_data', 'range_data'], \
+        'kobuki_msgs.msg.Sound': ['mobile_base/commands/sound', 'mobile_base/commands/sound', 'mobile_base/commands/sound'], \
+        'kobuki_msgs.msg.DigitalOutput': ['mobile_base/commands/digital_output', 'mobile_base/commands/digital_output'], \
+        'SoundRequest': ['robotsound', 'robotsound'], 'UInt8': ['command_input'], \
+        'Twist': ['cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', \
+                  'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', \
+                  'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', \
+                  'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', \
+                  'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', \
+                  'mobile_base/commands/velocity', 'mobile_base/commands/velocity', 'mobile_base/commands/velocity'], \
+        'Sound': ['mobile_base/commands/sound', 'mobile_base/commands/sound', 'mobile_base/commands/sound'], \
+        'Config': ['state_estimate', 'state_estimate'], \
+        'std_msgs.msg.UInt8': ['command_input'], 'String': ['range_data', 'range_data']}
 
-        cls.topic_name_list = retrieve_topic_names_from_topic_dict(cls.topic_name_dict, cls.msg_type_list)
+        cls.topic_name_list = retrieve_topic_name_from_topic_dict(cls.topic_name_dict, cls.msg_type_list[0])
         cls.expected_topic_name_list = ['cmd_vel_mux/input/navi', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/navi', \
             'cmd_vel_mux/input/teleop', 'cmd_vel_mux/input/teleop', 'mobile_base/commands/velocity', 'cmd_vel_mux/input/navi', \
             'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', 'cmd_vel_mux/input/navi', \
@@ -208,7 +241,7 @@ class TestMethods(unittest.TestCase):
             'mobile_base/commands/velocity': 0.13043478260869565, \
             'cmd_vel_mux/input/navi': 0.60869565217391308}
 
-        cls.msg_fields = retrieve_parameters(args.file_path, args.msg_type)
+        cls.msg_fields = retrieve_parameters(cls.file_path, cls.msg_type_list)
         cls.expected_msg_fields = {'linear': {'x': [0, 0.3, -0.1, 0, 0.0, 0.2, 0, 0.2, 0.2, 0.0, 0.0, 0.2, 0, -0.2, \
                                                 0, 0.2, 0.2, 0.0, 0.0, -0.2, 0.2, 0.2, 0, -0.2, -0.2, 0, 0.2, 0, -0.2, \
                                                 -0.2, 0, 0.2, 0.25, 0.25, 0.0, 0.0, -0.2, 0.0, 0.0, 0.2, 0.2, 0, 0.3]}, \
@@ -217,17 +250,28 @@ class TestMethods(unittest.TestCase):
 
         #cls.maxDiff = None
 
-    def test_turtlebot_topic_dict_result(self):
-        self.assertEqual(sorted(self.topic_name_dict), sorted(self.expected_topic_name_dict))
+    def test_turtlebot_topic_dict_key_result(self):
+        #test_logger.debug(sorted(self.topic_name_dict.keys(), key=lambda x: x[::-1]))
+        self.assertEqual(sorted(self.topic_name_dict.keys(), key=lambda x: x[::-1]), \
+                         sorted(self.expected_topic_name_dict.keys(), key=lambda x: x[::-1]))
 
-    def test_turtlebot_twist_list_result(self):
-        self.assertEqual(set(self.topic_name_list), set(self.expected_topic_name_list))
+
+    def test_turtlebot_topic_dict_full_result(self):
+        #test_logger.debug(findDiff(self.expected_topic_name_dict, self.topic_name_dict))
+        self.assertEqual(findDiff(self.expected_topic_name_dict, self.topic_name_dict), False)
+
+    def test_turtlebot_twist_list_same_length_result(self):
+        self.assertEqual(len(self.topic_name_list), len(self.expected_topic_name_list))
+
+    def test_turtlebot_twist_list_sorted_result(self):
+        self.assertEqual(sorted(self.topic_name_list), sorted(self.expected_topic_name_list))
 
     def test_turtlebot_twist_prob_result(self):
-        self.assertEqual(sorted(self.prob_dict), sorted(self.expected_prob_dict))
+        self.assertEqual(self.prob_dict, self.expected_prob_dict)
 
     def test_turtlebot_twist_msg_fields_result(self):
-        self.assertEqual(sorted(self.msg_fields), sorted(self.expected_msg_fields))
+        #test_logger.debug(findDiff(self.msg_fields,self.expected_msg_fields))
+        self.assertEqual(findDiff(self.msg_fields,self.expected_msg_fields), False)
 
     def test_update_dict_value_list(self):
         target_dict = {'A':{'a':{'aa':[1,2,3]}},'B':{'b':{'bb':[11,12,13]}}}
@@ -243,6 +287,7 @@ if __name__ == "__main__":
     if sys.platform == 'darwin': # Mac OS
         #file_path = '/Users/wongkaiweng/DropboWx/ros_examples/UR5/processed/'
         file_path = '/Users/wongkaiweng/Dropbox/ros_examples/turtlebot/processed/'
+        file_path = '/Users/wongkaiweng/Dropbox/ros_examples/testing/files/'
 
     else: # linux /windows?
         file_path = '/home/{0}/ros_examples/turtlebot/processed/'.format(getpass.getuser())
@@ -263,6 +308,7 @@ if __name__ == "__main__":
     else:
         topic_name_list = retrieve_topic_names(args.file_path, args.msg_type)
         msg_fields = retrieve_parameters(args.file_path, args.msg_type)
+        print "File Path: {0}".format(file_path)
         print "============\nParameters\n============"
         print "Twist Data:{0}".format(msg_fields)
 
@@ -276,7 +322,6 @@ if __name__ == "__main__":
         # changed approach.py in turtlebot
         target_topic_dict = get_best_topic_match_for_all_msg_types(file_path)
         print "==================\nTarget Topic Dictionary\n=================="
-        print target_topic_dict
-
-
+        for key in sorted(target_topic_dict, key=lambda x: x[::-1]):
+            print key + " : "+ target_topic_dict[key]
 
