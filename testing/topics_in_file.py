@@ -70,7 +70,8 @@ class Scope():
 
 
 class ROSCodeVisitor(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, call_name='rospy.Publisher'):
+        self.call_name = call_name
         self.ret = {}
         self.scopes = deque()
         self.scopes.append(Scope(None))
@@ -137,7 +138,9 @@ class ROSCodeVisitor(ast.NodeVisitor):
         LONG_FLAG = False
         callvisitor = FuncCallVisitor()
         callvisitor.visit(node.func)
-        if callvisitor.name == 'rospy.Publisher':
+
+        if callvisitor.name == self.call_name:
+            test_logger.log(4, "self.call_name in visit_Call fn.: {0}".format(self.call_name))
 
             if len(node.args) > 1 and (isinstance(node.args[1], ast.Name) or isinstance(node.args[1], ast.Attribute)):
                 if isinstance(node.args[1], ast.Name): # short name
@@ -231,12 +234,13 @@ class ROSCodeVisitor(ast.NodeVisitor):
 
 
 
-def get_topics_in_file(fname):
+def get_topics_in_file(fname, call_name='rospy.Publisher'):
     ret = []
+    test_logger.log(6, 'call_name in get_topics_in_file fn.:{0}'.format(call_name))
     try:
         with open(fname) as f:
             a = ast.parse(f.read())
-        rv = ROSCodeVisitor()
+        rv = ROSCodeVisitor(call_name)
         rv.visit(a)
         ret = rv.ret
     except (IndentationError,SyntaxError) as e:
@@ -251,9 +255,9 @@ def get_topics_in_file(fname):
 if __name__ == "__main__":
     file = "files/jackal_auto_drive.py"
     with open(file) as f:
-        # with open("topics_in_file.py") as f:
         a = ast.parse(f.read())
-    rv = ROSCodeVisitor()
+    call_name = 'rospy.Publisher'
+    rv = ROSCodeVisitor(call_name)
     rv.visit(a)
     print("Scope: {0}".format(rv.scopes[0]))
     print("Topic dict: {0}".format(rv.ret))

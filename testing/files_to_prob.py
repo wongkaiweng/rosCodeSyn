@@ -13,11 +13,11 @@ import parameters_in_file
 import logging_config
 test_logger = logging.getLogger("test_logger")
 
-def retrieve_topic_names(file_path, msg_type, remove_slash=True):
+def retrieve_topic_names(file_path, msg_type, remove_slash=True, call_name='rospy.Publisher'):
     if isinstance(msg_type, list):
         test_logger.warning("msg_type now is not a list. Using only the first element...")
         msg_type = msg_type[0]
-    topic_name_dict = retrieve_all_topics(file_path, remove_slash)
+    topic_name_dict = retrieve_all_topics(file_path, remove_slash, call_name)
     return retrieve_topic_name_from_topic_dict(topic_name_dict, msg_type)
 
 def retrieve_topic_names_from_topic_dict(topic_name_dict, msg_type_list):
@@ -33,7 +33,7 @@ def retrieve_topic_names_from_topic_dict(topic_name_dict, msg_type_list):
 def retrieve_topic_name_from_topic_dict(topic_name_dict, msg_type):
     return topic_name_dict[msg_type]
 
-def retrieve_all_topics(file_path, remove_slash=True):
+def retrieve_all_topics(file_path, remove_slash=True, call_name='rospy.Publisher'):
     """
     Retrieve topic names based on a msg type
     file_path: path to python files (not recursive)
@@ -44,13 +44,13 @@ def retrieve_all_topics(file_path, remove_slash=True):
     for root, dirs, files in os.walk(file_path):
         # traverse all directories
         for directory in dirs:
-            update_dict_value_list(topic_name_dict, retrieve_all_topics(os.path.join(root, directory), remove_slash))
+            update_dict_value_list(topic_name_dict, retrieve_all_topics(os.path.join(root, directory), remove_slash, call_name))
 
         # find all files
         for file in files:
             if file.endswith(".py"):
                 # get all topics in file
-                file_topic_name_dict = topics_in_file.get_topics_in_file(os.path.join(root, file))
+                file_topic_name_dict = topics_in_file.get_topics_in_file(os.path.join(root, file), call_name)
 
                 # remove leading slash
                 if remove_slash:
@@ -137,10 +137,10 @@ def find_topic_name_distribution(name_list, col_name='name'):
     return prob_df.to_dict()
 
 
-def get_best_topic_match_for_all_msg_types(file_path):
+def get_best_topic_match_for_all_msg_types(file_path, call_name='rospy.Publisher'):
     target_topic_dict = {}
 
-    topic_name_dict = retrieve_all_topics(file_path)
+    topic_name_dict = retrieve_all_topics(file_path, call_name=call_name)
 
     #** now long.topic.name and short.topic.name are grouped in topics_in_file.py
     for topic, topic_name_list in topic_name_dict.iteritems():
@@ -285,9 +285,9 @@ class TestMethods(unittest.TestCase):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="find topics with ast")
     if sys.platform == 'darwin': # Mac OS
-        #file_path = '/Users/wongkaiweng/DropboWx/ros_examples/UR5/processed/'
-        file_path = '/Users/wongkaiweng/Dropbox/ros_examples/turtlebot/processed/'
-        file_path = '/Users/wongkaiweng/Dropbox/ros_examples/testing/files/'
+        #file_path = '/Users/{0}/DropboWx/ros_examples/UR5/processed/'.format(getpass.getuser())
+        file_path = '/Users/{0}/Dropbox/ros_examples/turtlebot/processed/'.format(getpass.getuser())
+        #file_path = '/Users/{0}/Dropbox/ros_examples/testing/files/'.format(getpass.getuser())
 
     else: # linux /windows?
         file_path = '/home/{0}/ros_examples/turtlebot/processed/'.format(getpass.getuser())
@@ -306,7 +306,8 @@ if __name__ == "__main__":
         test_suite = unittest.TestLoader().loadTestsFromTestCase(TestMethods)
         unittest.TextTestRunner(verbosity=2).run(test_suite)
     else:
-        topic_name_list = retrieve_topic_names(args.file_path, args.msg_type)
+        call_name = 'rospy.Subscriber'
+        topic_name_list = retrieve_topic_names(args.file_path, args.msg_type, call_name=call_name)
         msg_fields = retrieve_parameters(args.file_path, args.msg_type)
         print "File Path: {0}".format(file_path)
         print "============\nParameters\n============"
@@ -320,7 +321,7 @@ if __name__ == "__main__":
 
 
         # changed approach.py in turtlebot
-        target_topic_dict = get_best_topic_match_for_all_msg_types(file_path)
+        target_topic_dict = get_best_topic_match_for_all_msg_types(file_path, call_name=call_name)
         print "==================\nTarget Topic Dictionary\n=================="
         for key in sorted(target_topic_dict, key=lambda x: x[::-1]):
             print key + " : "+ target_topic_dict[key]
