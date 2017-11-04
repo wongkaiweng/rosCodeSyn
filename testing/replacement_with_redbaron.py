@@ -2,6 +2,7 @@ import redbaron
 import json
 import logging
 import os
+import ast
 
 import logging_config
 replace_logger = logging.getLogger("replace_logger")
@@ -63,6 +64,34 @@ def replace_topic(red_obj, channel_type, target_topic_dict):
                 replace_logger.warning('{0} is not found and thus not replaced!'.format(msg_type))
 
 
+def replace_parameters(red_obj, out_of_bound_list):
+    """
+    out_of_bound_list = [attribute_list, limit_violation, limit, cur_value, var_name]
+    """
+    replace_logger.debug('out_of_bound_list: {0}'.format(out_of_bound_list))
+    var_name = out_of_bound_list[0][4]
+    cur_value = out_of_bound_list[0][3]
+    limit = out_of_bound_list[0][2]
+
+    # finding all calls (e.g publishers/subscribers)
+    for assignmentNode in red_obj.find_all("AssignmentNode"):
+
+        # check if it contains channel_type (only direct children)
+        if assignmentNode.target.find("NameNode", value=var_name, recursive=False):
+
+            if isinstance(assignmentNode.value, redbaron.nodes.IntNode) or \
+               isinstance(assignmentNode.value, redbaron.nodes.FloatNode):
+
+                if ast.literal_eval(assignmentNode.value.value) == cur_value:
+                    replace_logger.debug("value match: {0}, var_name: {1}, cur_value: {2}".format(assignmentNode, var_name, cur_value))
+
+                    # replace value
+                    assignmentNode.value.value = str(limit)
+                    replace_logger.info("Replaced value in {0}: {1} with {2}".format(assignmentNode, cur_value, limit))
+
+
+            # TODO: what if it's an attribute?
+
 def save_redbardon_obj_to_file(red_obj, dest_file):
     dirname = os.path.dirname(dest_file)
     if not os.path.exists(dirname):
@@ -85,6 +114,9 @@ if __name__ == "__main__":
 
     # operations
     replace_topic(red_obj, channel_type, target_topic_dict)
+
+    out_of_bound_list = [(['linear', 'x'], 'upper', 0.2, 0.3, 'vel')]
+    replace_parameters(red_obj, out_of_bound_list)
 
     # save to file
     save_redbardon_obj_to_file(red_obj,dest_file)

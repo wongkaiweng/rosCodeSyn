@@ -126,12 +126,14 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
     attribute_list: a.b to ['a','b'], can be feed into the function to bypass 'attribute_in_var_names_list'
     limit_dict: a dictionary of value obj limits
     """
+    out_of_bound_list = []
     result = False
     if attribute_list:
         result = True
 
     if not result:
         result, attribute_list = attribute_in_var_names_list(ast_attribute_obj, var_names_list)
+        parameters_logger.debug(attribute_list) # TODO: maybe we want the full list instead? including the name?
 
     if result:
         # get all fields and save to dict
@@ -139,7 +141,8 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
             dict_insert(msg_fields_dict, attribute_list, ast_value_obj.n)
             # check limits
             if limits_dict:
-                check_limits_wrapper(attribute_list, ast_value_obj.n, limits_dict)
+                out_of_bound_tuple = check_limits_wrapper(attribute_list, ast_value_obj.n, limits_dict)
+                if out_of_bound_tuple: out_of_bound_list.append(out_of_bound_tuple)
 
         elif isinstance(ast_value_obj, ast.Name) and scope:
             if scope.find(ast_value_obj.id):
@@ -147,32 +150,37 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
                 # check limits
                 if limits_dict:
                     for value in scope.find(ast_value_obj.id):
-                        check_limits_wrapper(attribute_list, value, limits_dict)
+                        out_of_bound_tuple = check_limits_wrapper(attribute_list, value, limits_dict)
+                        if out_of_bound_tuple: out_of_bound_list.append(out_of_bound_tuple + (ast_value_obj.id,))
+
         else:
             if not scope:
                 parameters_logger.warning('scope is None!')
             else:
                 parameters_logger.warning('not sure what to do with this: {0}'.format(type(ast_value_obj)))
 
+    return out_of_bound_list
+
 def check_limits_wrapper(attribute_list, value, limits_dict):
     """
     Check if value is within the limits given by limits_dict and the keys from attribute_list
     The limits dict follows the following format:
     limits_dict = {'??':{'?':{'lower': -10, 'upper':10}}}
+    Return over-limit or below-limit tuple
     """
     limits = dict_get_values_from_key_list(limits_dict, attribute_list)
     lower_limit, upper_limit = limits['lower'], limits['upper']
     if lower_limit > value:
         parameters_logger.warning("{0} value: {1} is below the lower limit: {2}".format('.'.join(attribute_list), value, lower_limit))
-        return False
+        return (attribute_list, 'lower', lower_limit, value)
 
     if upper_limit < value:
         parameters_logger.warning("{0} value: {1} is above the upper limit: {2}".format('.'.join(attribute_list), value, upper_limit))
-        return False
+        return (attribute_list, 'upper', upper_limit, value)
 
     parameters_logger.info("{0} value: {1} is within the lower limit: {2} and the upper limit: {3}".format(\
                             '.'.join(attribute_list), value, lower_limit, upper_limit))
-    return True
+    return None
 
 
 
@@ -190,6 +198,7 @@ class ROSParameterVisitor(ast.NodeVisitor):
         self.var_names_list = []
         self.msg_fields_dict = msg_fields_dict
         self.limits_dict = limits_dict
+        self.out_of_bound_list = [] # from checking of limits_dict
 
     def visit_Assign(self, node):
         # save variables
@@ -227,16 +236,16 @@ class ROSParameterVisitor(ast.NodeVisitor):
         # assign target is an attribute
         elif isinstance(node.targets[0], ast.Attribute):
             # check if first part of attribute is a msgType Object
-            check_and_save_attribute_and_value_to_dict(node.targets[0], node.value, self.var_names_list, self.msg_fields_dict, self.scopes[0],\
-                                             limits_dict=self.limits_dict)
+            self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(node.targets[0], node.value, self.var_names_list, \
+                                                self.msg_fields_dict, self.scopes[0], limits_dict=self.limits_dict))
 
         # assign target is a tuple
         elif isinstance(node.targets[0], ast.Tuple):
             for idx, item in enumerate(node.targets[0].elts):
                 if isinstance(item, ast.Attribute):
                     # check if first part of attribute is a msgType Object
-                    check_and_save_attribute_and_value_to_dict(item, node.value.elts[idx], self.var_names_list, self.msg_fields_dict, self.scopes[0],\
-                                                     limits_dict=self.limits_dict)
+                    self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(item, node.value.elts[idx], self.var_names_list, \
+                                                        self.msg_fields_dict, self.scopes[0],limits_dict=self.limits_dict))
 
         # TODO: what if the value is an equation
         self.generic_visit(node)
@@ -250,8 +259,8 @@ class ROSParameterVisitor(ast.NodeVisitor):
             callvisitor_twist_linear.visit(node_args_list[0].func)
             for idx, ast_value_obj in enumerate(node_args_list[0].args):
                 # lienar x, y, z
-                check_and_save_attribute_and_value_to_dict(None, ast_value_obj, self.var_names_list, self.msg_fields_dict, \
-                    scope=self.scopes[0], attribute_list=['linear', attribute_field[idx]], limits_dict=self.limits_dict)
+                self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(None, ast_value_obj, self.var_names_list, self.msg_fields_dict, \
+                    scope=self.scopes[0], attribute_list=['linear', attribute_field[idx]], limits_dict=self.limits_dict))
 
                 # TODO: get line number and replace later?
 
@@ -261,8 +270,8 @@ class ROSParameterVisitor(ast.NodeVisitor):
             callvisitor_twist_angular.visit(node_args_list[1].func)
             for idx, ast_value_obj in enumerate(node_args_list[1].args):
                 # angular x, y, z
-                check_and_save_attribute_and_value_to_dict(None, ast_value_obj, self.var_names_list, self.msg_fields_dict, \
-                    scope=self.scopes[0], attribute_list=['angular', attribute_field[idx]], limits_dict=self.limits_dict)
+               self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(None, ast_value_obj, self.var_names_list, self.msg_fields_dict, \
+                    scope=self.scopes[0], attribute_list=['angular', attribute_field[idx]], limits_dict=self.limits_dict))
 
 
 
@@ -281,3 +290,4 @@ if __name__ == "__main__":
     print("All variables: {0}".format(rv.scopes[0]))
     print("Parameters of interest: {0}".format(rv.msg_fields_dict))
     print("Message type: {0}".format(rv.var_names_list))
+    print("Out of bound list: {0}".format(rv.out_of_bound_list))
