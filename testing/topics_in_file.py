@@ -5,7 +5,7 @@ import logging
 import sys
 
 import logging_config
-test_logger = logging.getLogger("test_logger")
+topics_logger = logging.getLogger("topics_logger")
 
 
 if not sys.platform == 'darwin': # not Mac OS
@@ -140,7 +140,7 @@ class ROSCodeVisitor(ast.NodeVisitor):
         callvisitor.visit(node.func)
 
         if callvisitor.name == self.call_name:
-            test_logger.log(4, "self.call_name in visit_Call fn.: {0}".format(self.call_name))
+            topics_logger.log(4, "self.call_name in visit_Call fn.: {0}".format(self.call_name))
 
             if len(node.args) > 1 and (isinstance(node.args[1], ast.Name) or isinstance(node.args[1], ast.Attribute)):
                 if isinstance(node.args[1], ast.Name): # short name
@@ -221,7 +221,7 @@ class ROSCodeVisitor(ast.NodeVisitor):
                 elif x.name in self.names_to_import_module.keys():
                     # if it's different from before
                     if self.names_to_import_module[x.name] != node.module:
-                        test_logger.warning("This msg_type {0} currently belongs to module {1}. But we are changing it to module {2}".format(\
+                        topics_logger.warning("This msg_type {0} currently belongs to module {1}. But we are changing it to module {2}".format(\
                             x.name, self.names_to_import_module[x.name], node.module))
 
                         # save mapping of name to module
@@ -236,7 +236,7 @@ class ROSCodeVisitor(ast.NodeVisitor):
 
 def get_topics_in_file(fname, call_name='rospy.Publisher'):
     ret = []
-    test_logger.log(6, 'call_name in get_topics_in_file fn.:{0}'.format(call_name))
+    topics_logger.log(6, 'call_name in get_topics_in_file fn.:{0}'.format(call_name))
     try:
         with open(fname) as f:
             a = ast.parse(f.read())

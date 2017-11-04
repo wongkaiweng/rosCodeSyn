@@ -8,9 +8,10 @@ import ConfigParser
 import sys, os
 import time
 
-loggerLevel = {"test":'DEBUG',
-               "replacement":'DEBUG',
-               "transform":'DEBUG'}
+loggerLevel = {"prob_from_files":'DEBUG',
+               "replacement_with_redbaron":'DEBUG',
+               "topics_in_file":'DEBUG',
+               "parameters_in_file":'DEBUG'}
 
 def setupLogging(loggerLevel=None):
     # Set up loggers for printing error messages
@@ -38,11 +39,15 @@ def setupLogging(loggerLevel=None):
             else:
                 precolor = self.detailed_formatter.format(record)
 
-            return self.colorize(record.levelname, precolor)
+            string =  self.colorize(record.levelname, precolor)
+            header, footer = string.split(record.message)
+            string = string.replace('\n', '\n' + ' '*len(header))
+            return string
 
-    loggers = {"test": logging.getLogger("test_logger"), \
-               "replacement": logging.getLogger("replace_logger"),
-               "transform": logging.getLogger("transform_logger")}
+    loggers = {"prob_from_files": logging.getLogger("probs_logger"), \
+               "replacement_with_redbaron": logging.getLogger("replace_logger"),
+               "topics_in_file": logging.getLogger("topics_logger"),
+               "parameters_in_file": logging.getLogger("parameters_logger")}
 
     h = logging.StreamHandler()
     f = ColorLogFormatter()

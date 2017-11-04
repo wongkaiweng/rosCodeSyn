@@ -14,6 +14,11 @@ def creat_redbaron_obj(filename):
 
 
 def replace_topic(red_obj, channel_type, target_topic_dict):
+    replace_logger.log(8, '----------------------------------------')
+    replace_logger.log(8, 'Channel_type:{0}'.format(channel_type))
+    replace_logger.log(8, 'Target_topic_dict:{0}'.format(target_topic_dict))
+    replace_logger.info('========================================')
+
     # finding all calls (e.g publishers/subscribers)
     for atomtrailersNode in red_obj.find_all("AtomtrailersNode"):
 
@@ -41,14 +46,21 @@ def replace_topic(red_obj, channel_type, target_topic_dict):
             ######################
             # replace topic name #
             ######################
-            if msg_type in target_topic_dict.keys():
-                replace_logger.info("Replaced {0}:{1} with {2}".format(channel_type, callNode.value[0].value,\
+            if ("Bool" in msg_type) and \
+               ((channel_type == 'Publisher' and 'node_publish_topic' in str(callNode.value[0].value)) or \
+                (channel_type == 'Subscriber' and 'node_subscribe_topic' in str(callNode.value[0].value))):
+
+                # ignore node_subscribe_topic and node_publish_topic
+                replace_logger.info("NOT replacing {0}: {1}".format(channel_type, callNode.value[0].value))
+
+            elif msg_type in target_topic_dict.keys():
+                replace_logger.info("Replaced {0}: {1} with {2}".format(channel_type, callNode.value[0].value,\
                                                                 target_topic_dict[msg_type]))
                 # replace topic name with new Name Node
                 callNode.value[0].value = target_topic_dict[msg_type]
             else:
                 # throw a warning
-                replace_logger.warning('{0} is not found and thus not replaced!\nTarget_topic_dict:{1}'.format(msg_type, target_topic_dict))
+                replace_logger.warning('{0} is not found and thus not replaced!'.format(msg_type))
 
 
 def save_redbardon_obj_to_file(red_obj, dest_file):

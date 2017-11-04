@@ -11,11 +11,11 @@ import unittest
 import topics_in_file
 import parameters_in_file
 import logging_config
-test_logger = logging.getLogger("test_logger")
+probs_logger = logging.getLogger("probs_logger")
 
 def retrieve_topic_names(file_path, msg_type, remove_slash=True, call_name='rospy.Publisher'):
     if isinstance(msg_type, list):
-        test_logger.warning("msg_type now is not a list. Using only the first element...")
+        probs_logger.warning("msg_type now is not a list. Using only the first element...")
         msg_type = msg_type[0]
     topic_name_dict = retrieve_all_topics(file_path, remove_slash, call_name)
     return retrieve_topic_name_from_topic_dict(topic_name_dict, msg_type)
@@ -25,7 +25,7 @@ def retrieve_topic_names_from_topic_dict(topic_name_dict, msg_type_list):
     CHANGED: now handles aggregation in topics_in_file.get_topics_in_file
              Do not use this function anymore.
     """
-    test_logger.warning("This function is obselete. Use 'retrieve_topic_name_from_topic_dict' instead")
+    probs_logger.warning("This function is obselete. Use 'retrieve_topic_name_from_topic_dict' instead")
     # return only the msg_types of interest
     topics_for_msg_type_list = [topic_name_dict[msg_type] for msg_type in msg_type_list if msg_type in topic_name_dict.keys()]
     return [i for i in itertools.chain.from_iterable(topics_for_msg_type_list)]
@@ -76,48 +76,6 @@ def update_dict_value_list(target_dict, update_dict):
         else:
             target_dict[key] = update_dict[key]
 
-def update_dict_with_flattened_list(target_dict):
-    """
-    update target_dict such that there are no sublists
-    """
-    for key in target_dict.keys():
-        if not isinstance(target_dict[key], list):
-            update_dict_with_flattened_list(target_dict[key])
-        else:
-            temp_list = []
-            for item in target_dict[key]:
-                if not isinstance(item, list):
-                    temp_list.append(item)
-                else:
-                    temp_list.extend(item)
-
-            target_dict[key] = temp_list
-
-
-def retrieve_parameters(file_path, msg_type, msg_fields_dict={}):
-    """
-    Retrieve parameters based on a msg type
-    file_path: path to python files (not recursive)
-    msg_type: type of msg
-    """
-    for root, dirs, files in os.walk(file_path):
-        # traverse all directories
-        for directory in dirs:
-            msg_fields = retrieve_parameters(os.path.join(root, directory), msg_type, msg_fields_dict)
-
-        # find all files
-        for file in files:
-            if file.endswith(".py"):
-                #find parameters with msg_type
-                #msg_fields = parameters_in_file.get_parameters_in_file(os.path.join(root, file), msg_type, {})
-                msg_fields = parameters_in_file.get_parameters_in_file(os.path.join(root, file), msg_type, msg_fields_dict)
-                #test_logger.debug("File: {0}, fields: {1}".format(file, msg_fields))
-
-    # clean up to remove sublists
-    update_dict_with_flattened_list(msg_fields_dict)
-
-    return msg_fields_dict
-
 def find_topic_name_distribution(name_list, col_name='name'):
     """
     Find distribution of a msg type and return a dict
@@ -130,9 +88,9 @@ def find_topic_name_distribution(name_list, col_name='name'):
     # find out distribution for this msg type
     # print df[col_name].value_counts().to_dict()
     prob_df =  df.groupby(col_name).size() / len(df)
-    test_logger.debug(df.groupby(col_name).size())
-    test_logger.debug(prob_df)
-    test_logger.debug('------------------')
+    probs_logger.log(8, "Count:{0}".format(df.groupby(col_name).size()))
+    probs_logger.log(8, "Prob:{0}".format(prob_df))
+    probs_logger.log(8, '------------------')
 
     return prob_df.to_dict()
 
@@ -146,7 +104,7 @@ def get_best_topic_match_for_all_msg_types(file_path, call_name='rospy.Publisher
     for topic, topic_name_list in topic_name_dict.iteritems():
 
         # find distribution
-        prob_dict = find_topic_name_distribution(topic_name_list)
+        prob_dict = find_topic_name_distribution(topic_name_list, topic)
 
         # find the largest value and the key associated with it
         sorted_prob_dict_values = sorted(prob_dict.values())
@@ -241,7 +199,7 @@ class TestMethods(unittest.TestCase):
             'mobile_base/commands/velocity': 0.13043478260869565, \
             'cmd_vel_mux/input/navi': 0.60869565217391308}
 
-        cls.msg_fields = retrieve_parameters(cls.file_path, cls.msg_type_list)
+        cls.msg_fields = parameters_in_file.retrieve_parameters(cls.file_path, cls.msg_type_list)
         cls.expected_msg_fields = {'linear': {'x': [0, 0.3, -0.1, 0, 0.0, 0.2, 0, 0.2, 0.2, 0.0, 0.0, 0.2, 0, -0.2, \
                                                 0, 0.2, 0.2, 0.0, 0.0, -0.2, 0.2, 0.2, 0, -0.2, -0.2, 0, 0.2, 0, -0.2, \
                                                 -0.2, 0, 0.2, 0.25, 0.25, 0.0, 0.0, -0.2, 0.0, 0.0, 0.2, 0.2, 0, 0.3]}, \
@@ -251,13 +209,13 @@ class TestMethods(unittest.TestCase):
         #cls.maxDiff = None
 
     def test_turtlebot_topic_dict_key_result(self):
-        #test_logger.debug(sorted(self.topic_name_dict.keys(), key=lambda x: x[::-1]))
+        #probs_logger.debug(sorted(self.topic_name_dict.keys(), key=lambda x: x[::-1]))
         self.assertEqual(sorted(self.topic_name_dict.keys(), key=lambda x: x[::-1]), \
                          sorted(self.expected_topic_name_dict.keys(), key=lambda x: x[::-1]))
 
 
     def test_turtlebot_topic_dict_full_result(self):
-        #test_logger.debug(findDiff(self.expected_topic_name_dict, self.topic_name_dict))
+        #probs_logger.debug(findDiff(self.expected_topic_name_dict, self.topic_name_dict))
         self.assertEqual(findDiff(self.expected_topic_name_dict, self.topic_name_dict), False)
 
     def test_turtlebot_twist_list_same_length_result(self):
@@ -270,7 +228,7 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(self.prob_dict, self.expected_prob_dict)
 
     def test_turtlebot_twist_msg_fields_result(self):
-        #test_logger.debug(findDiff(self.msg_fields,self.expected_msg_fields))
+        #probs_logger.debug(findDiff(self.msg_fields,self.expected_msg_fields))
         self.assertEqual(findDiff(self.msg_fields,self.expected_msg_fields), False)
 
     def test_update_dict_value_list(self):
@@ -308,7 +266,7 @@ if __name__ == "__main__":
     else:
         call_name = 'rospy.Subscriber'
         topic_name_list = retrieve_topic_names(args.file_path, args.msg_type, call_name=call_name)
-        msg_fields = retrieve_parameters(args.file_path, args.msg_type)
+        msg_fields = parameters_in_file.retrieve_parameters(args.file_path, args.msg_type)
         print "File Path: {0}".format(file_path)
         print "============\nParameters\n============"
         print "Twist Data:{0}".format(msg_fields)

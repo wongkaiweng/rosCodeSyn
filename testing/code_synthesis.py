@@ -1,7 +1,7 @@
 import sys
 import getpass
 
-import files_to_prob
+import prob_from_files
 import replacement_with_redbaron
 
 
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     for channel_type, call_name in channel_type_to_call_name_dict.iteritems():
 
         # changed approach.py in turtlebot
-        target_topic_dict = files_to_prob.get_best_topic_match_for_all_msg_types(file_path, call_name=call_name)
+        target_topic_dict = prob_from_files.get_best_topic_match_for_all_msg_types(file_path, call_name=call_name)
 
         #!! note the special string formating!
         for msg_type, topic in target_topic_dict.iteritems():
