@@ -279,12 +279,12 @@ if __name__ == "__main__":
     with open("../turtlebot/processed/wander.py") as f:
         a = ast.parse(f.read())
 
-    vel_limits = {'linear':{'x':{'lower': -10, 'upper':10}, \
-                            'y':{'lower': -10, 'upper':10}, \
-                            'z':{'lower': -10, 'upper':10}},\
-                  'angular':{'x':{'lower': -10, 'upper':10}, \
-                             'y':{'lower': -10, 'upper':10}, \
-                             'z':{'lower': -10, 'upper':10}}}
+    vel_limits = {'linear':{'x':{'lower': -0.2, 'upper':0.2}, \
+                            'y':{'lower': -0.2, 'upper':0.2}, \
+                            'z':{'lower': -0.2, 'upper':0.2}},\
+                  'angular':{'x':{'lower': -0.2, 'upper':0.2}, \
+                             'y':{'lower': -0.2, 'upper':0.2}, \
+                             'z':{'lower': -0.2, 'upper':0.2}}}
     rv = ROSParameterVisitor(['geometry_msgs.msg.Twist','Twist'], limits_dict=vel_limits)
     rv.visit(a)
     print("All variables: {0}".format(rv.scopes[0]))
