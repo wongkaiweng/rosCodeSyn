@@ -2,8 +2,8 @@
 
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
-import roslib
-roslib.load_manifest('kdl')
+#import roslib
+#roslib.load_manifest('orocos_kdl')
 from PyKDL import *
 from functions import *
 
@@ -38,7 +38,7 @@ eps = [[0.0, 0.0, 0.0],
  [.361, 0.0, 0.0], 
  [.541, 0.0, 0.0]]
 
-print cost_joints_ee([0,0,0], target, eps, 1)
+print cost_joints_ee([0,0,0], target, eps, source, 1)
 
 # Test retarget:
 print "Now testing retarget:"
@@ -55,7 +55,7 @@ print "Retargeted Endpoints: "
 print ret_ep
 
 # Plot the results:
-plt.ion()
+#plt.ion()
 fig = plt.figure()
 ax = p3.Axes3D(fig)
 draw(source, source_angles,ax,'b')
