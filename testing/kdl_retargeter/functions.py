@@ -62,6 +62,8 @@ def cost_joints_ee(angles, target, eps, source, EE_ratio, mode='links'):
     -original: by Tarik
     -joints_only: comparing only joint positions
     -links: comparing link by link
+    -scale_by_length: comparing points distance on the chain based on dividing the full length equally
+    -scale_by_unit_length: comparing point distances as scale_by_length but also as both chain as the same length
     '''
     Nt = target.getNrOfSegments()
     Ns = len(eps)-1
@@ -104,6 +106,9 @@ def cost_joints_ee(angles, target, eps, source, EE_ratio, mode='links'):
     elif mode == 'scale_by_length':
         rJoints = calculate_rJoints_with_scaled_chain(ept, target, eps, source)
 
+    elif mode == 'scale_by_unit_length':
+        rJoints = calculate_rJoints_with_scaled_chain(ept, target, eps, source, as_unit_length=True)
+
     else:
         print "Not in any mode!"
 
@@ -112,7 +117,6 @@ def cost_joints_ee(angles, target, eps, source, EE_ratio, mode='links'):
     # normalize for number of source interior joints, multiply by ratio:
     m = Ns-1 # if EEratio = 1, EE counts as much as any other joint
     cost = rEE*m*EE_ratio + rJoints
-    #print cost
     return cost
 
     # TODO: need to do it not be joint but by distance !!!!
@@ -147,7 +151,7 @@ def find_pt_on_chain(ep_matrix, distance_from_origin):
     return interpolate(start_pt, end_pt, unit_distance_from_start_pt)
 
 
-def calculate_rJoints_with_scaled_chain(ept, target, eps, source):
+def calculate_rJoints_with_scaled_chain(ept, target, eps, source, as_unit_length=False):
 
     #ept = forwardKinematics(target,angles)
     #eps = np.array(eps)
@@ -174,8 +178,6 @@ def calculate_rJoints_with_scaled_chain(ept, target, eps, source):
     #print 'target_chain_list: {0}, length: {1}'.format(target_chain_length_list, \
     #                                                       target_chain_length_list[-1])
 
-    Nt = target.getNrOfSegments()
-    Ns = source.getNrOfSegments()
     eps_increment, ept_increment = source_chain_length_list[-1]/float(SAMPLE_POINTS-1), \
                                    target_chain_length_list[-1]/float(SAMPLE_POINTS-1)
 
@@ -201,6 +203,11 @@ def calculate_rJoints_with_scaled_chain(ept, target, eps, source):
         else:
             t = ept[lower_t_idx,:]
 
+        # look at it as unit vector
+        if as_unit_length:
+            rJoints += np.abs(np.linalg.norm(s/source_chain_length_list[-1]-\
+                                             t/target_chain_length_list[-1]))
+        # just simply compare distance
         rJoints += np.abs(np.linalg.norm(s-t))
 
     return rJoints

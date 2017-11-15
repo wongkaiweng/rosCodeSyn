@@ -46,7 +46,7 @@ class TestMethods(unittest.TestCase):
                                             np.array(self.eps), self.target), 0)
 
     def test_same_arm(self):
-        source = target
+        source = self.target
         source_angles = [-2.4273787950371637, -0.8025726878730972, -1.0610762635509168, \
                         -3.286074344527749, -20.863498365468587, 0.0]
         target_initial_angles = [0,0,0,0,0,0]
@@ -56,9 +56,11 @@ class TestMethods(unittest.TestCase):
         ret = retarget(source,source_angles,self.target,target_initial_angles,target_bounds,\
             EE_ratio=EE_ratio, mode=MODE)
         ret_angles = ret[0].tolist()
-        ret_ep = forwardKinematics(target,ret_angles)
+        ret_ep = forwardKinematics(self.target,ret_angles)
         eps = forwardKinematics(source,source_angles)
-        self.assertEqual(calculate_rJoints_with_scaled_chain(np.array(ret_ep), self.target, np.array(eps), source)<0.01, True)
+        rJoints = calculate_rJoints_with_scaled_chain(np.array(ret_ep), self.target, np.array(eps), source)
+        print "rJoints: {0}".format(rJoints)
+        self.assertEqual(rJoints<0.01, True)
 
 
 
@@ -71,7 +73,7 @@ if __name__ == "__main__":
         unittest.TextTestRunner(verbosity=2).run(test_suite)
     else:
         ## JACO to UR5  ###
-        """
+
         # jaco #
         robot_jaco = URDF.from_xml_file('/home/{0}/ros_examples/configs/jaco_arm.urdf'.format(getpass.getuser()))
         jaco_tree = kdl_tree_from_urdf_model(robot_jaco)
@@ -83,10 +85,10 @@ if __name__ == "__main__":
         print "Jaco Segments: {0}".format(jaco_chain.getNrOfSegments())
 
         jaco_angles = [0.0,2.0,1.3,2.2,2.0,1.0] # move_robot_jaco
-        jaco_angles = [2.2,2.3,1.57,0,0,0] # test_move_jaco\
+        #jaco_angles = [2.2,2.3,1.57,0,0,0] # test_move_jaco\
         #jaco_angles = [1.5,1.7,1.57,0,0,0]
 
-        """
+
 
         # UR5 #
         robot_ur5 = URDF.from_xml_file('/home/{0}/ros_examples/configs/ur5.urdf'.format(getpass.getuser()))
@@ -114,20 +116,39 @@ if __name__ == "__main__":
         youbot_bounds = [(-360,360),(-360,360),(-360,360),(-360,360),(-360,360)] ## need to change
 
 
+        # UR5 to youbot
         source = ur5_chain
+        source_angles = jaco_angles #ur5_initial_angles
         target = youbot_chain
-        source_angles = ur5_initial_angles
         target_initial_angles = youbot_initial_angles
         target_bounds = youbot_bounds
+
+        """
+        # UR5 to UR5
+        source = ur5_chain
+        source_angles = jaco_angles
+        target = ur5_chain
+        target_initial_angles = ur5_initial_angles
+        target_bounds = ur5_bounds
+        """
+
+        """
+        # jaco to UR5
+        source = jaco_chain
+        source_angles = jaco_angles
+        target = ur5_chain
+        target_initial_angles = ur5_initial_angles
+        target_bounds = ur5_bounds
+        """
 
         # Test retarget:
         print "Now testing retarget:"
 
-
-
         # Plot the results:
         #plt.ion()
-        MODE = 'scale_by_length' #'links' #"joints_only" #'original' #
+        #mode_list = ['original',"joints_only",'links','scale_by_length','scale_by_unit_length']
+        mode_list = []
+        MODE = 'scale_by_unit_length'
         fig = plt.figure()
         ax = p3.Axes3D(fig)
         draw(source, source_angles,ax,'b', label='Source Config')
@@ -135,15 +156,28 @@ if __name__ == "__main__":
         color = ['g','c','r']
 
         eps = forwardKinematics(source,source_angles)
+        if mode_list:
+            for mode in mode_list:
+                print "Mode: {0}".format(mode)
+                for idx, EE_ratio in enumerate([0,0.5,1]):
+                    ret = retarget(source,source_angles,target,target_initial_angles,target_bounds,\
+                        EE_ratio=EE_ratio, mode=mode)
+                    ret_angles = ret[0].tolist()
+                    ret_ep = forwardKinematics(target,ret_angles)
+                    print "EE_ratio: {0} Final Cost: {1}".format(EE_ratio, \
+                        calculate_rJoints_with_scaled_chain(np.array(ret_ep), target, np.array(eps), source))
+                    draw(target, ret_angles, ax, color[idx], label='Target Final EE_ratio:{0}'.format(EE_ratio))
+        else:
+            print "Mode: {0}".format(MODE)
+            for idx, EE_ratio in enumerate([0,0.5,1]):
+                ret = retarget(source,source_angles,target,target_initial_angles,target_bounds,\
+                    EE_ratio=EE_ratio, mode=MODE)
+                ret_angles = ret[0].tolist()
+                ret_ep = forwardKinematics(target,ret_angles)
+                print "EE_ratio: {0} Final Cost: {1}".format(EE_ratio, \
+                    calculate_rJoints_with_scaled_chain(np.array(ret_ep), target, np.array(eps), source))
+                draw(target, ret_angles, ax, color[idx], label='Target Final EE_ratio:{0}'.format(EE_ratio))
 
-        for idx, EE_ratio in enumerate([0,0.5,1]):
-            ret = retarget(source,source_angles,target,target_initial_angles,target_bounds,\
-                EE_ratio=EE_ratio, mode=MODE)
-            ret_angles = ret[0].tolist()
-            ret_ep = forwardKinematics(target,ret_angles)
-            print "EE_ratio: {0} Final Cost: {1}".format(EE_ratio, \
-                calculate_rJoints_with_scaled_chain(np.array(ret_ep), target, np.array(eps), source))
-            draw(target, ret_angles, ax, color[idx], label='Target Final EE_ratio:{0}'.format(EE_ratio))
 
         print "Initial Endpoints:"
         orig_ep = forwardKinematics(target,target_initial_angles)
