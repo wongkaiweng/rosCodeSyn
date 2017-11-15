@@ -14,6 +14,37 @@ if not sys.platform == 'darwin': # not Mac OS
 else:
     LINUX = False
 
+class ListVisitor(ast.NodeVisitor):
+    def __init__(self, scope):
+        self._name = []
+        self._scope = scope
+
+    @property
+    def name(self):
+        if len(self._name) > 1:
+            return self._name
+        elif len(self._name) == 1:
+            return self._name[0]
+        else:
+            return None
+
+    @name.deleter
+    def name(self):
+        self._name.clear()
+
+    def visit_Name(self, node): # need work (load scope?)
+        #if self._scope.find(node.id):
+        #    self._name.append(self._scope.find(node.id))
+        self._name.append(node.id)
+        self.generic_visit(node)
+
+    def visit_Num(self, node):
+        self._name.append(node.n)
+
+    def visit_Str(self, node):
+        self._name.append(node.s)
+
+
 class FuncCallVisitor(ast.NodeVisitor):
     def __init__(self):
         self._name = deque()

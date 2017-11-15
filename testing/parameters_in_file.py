@@ -54,7 +54,8 @@ def update_dict_with_flattened_list(target_dict):
 
 def dict_insert(cur, list, value):
     if len(list) == 1:
-        if list[0] in cur.keys():
+        if list[0] in cur.keys() and \
+           value not in cur[list[0]]: # don't want any duplicates
             cur[list[0]].append(value)
         else:
             cur[list[0]] = [value]
@@ -113,7 +114,7 @@ def get_parameters_in_file(fname, msgTypeList, msg_fields_dict={}):
 
 
 def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj, var_names_list, msg_fields_dict, \
-                                     scope=None, attribute_list=[], limits_dict={}):
+                                     scope=None, attribute_list=[], limits_dict={}, call_func_list=[]):
     """
     This function updates msg_fields_dict if attribute(ast_attribute_obj)
     matches variables in var_names_list.
@@ -125,6 +126,7 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
     scope: previously saved variables
     attribute_list: a.b to ['a','b'], can be feed into the function to bypass 'attribute_in_var_names_list'
     limit_dict: a dictionary of value obj limits
+    call_func_list: valid func call that we will save parameters e.g.:['JointTrajectoryPoint']
     """
     out_of_bound_list = []
     result = False
@@ -133,7 +135,7 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
 
     if not result:
         result, attribute_list = attribute_in_var_names_list(ast_attribute_obj, var_names_list)
-        parameters_logger.debug(attribute_list) # TODO: maybe we want the full list instead? including the name?
+        parameters_logger.debug('result:{0}, attribute_list:{1}'.format(result, attribute_list)) # TODO: maybe we want the full list instead? including the name?
 
     if result:
         # get all fields and save to dict
@@ -146,12 +148,42 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
 
         elif isinstance(ast_value_obj, ast.Name) and scope:
             if scope.find(ast_value_obj.id):
-                dict_insert(msg_fields_dict, attribute_list, scope.find(ast_value_obj.id))
+                dict_insert(msg_fields_dict, attribute_list, ast_value_obj.id)
+                #dict_insert(msg_fields_dict, attribute_list, scope.find(ast_value_obj.id))
                 # check limits
                 if limits_dict:
                     for value in scope.find(ast_value_obj.id):
                         out_of_bound_tuple = check_limits_wrapper(attribute_list, value, limits_dict)
                         if out_of_bound_tuple: out_of_bound_list.append(out_of_bound_tuple + (ast_value_obj.id,))
+
+        elif isinstance(ast_value_obj, ast.List) and scope:
+            parameters_logger.debug('List elts: {0}, ctx: {1}'.format(ast_value_obj.elts, ast_value_obj.ctx))
+            for ast_elts_obj in ast_value_obj.elts:
+
+                #recursive for different fields
+                check_and_save_attribute_and_value_to_dict(None, ast_elts_obj, var_names_list, msg_fields_dict, \
+                                     scope=scope, attribute_list=attribute_list, limits_dict=limits_dict,
+                                     call_func_list=call_func_list)
+
+        elif isinstance(ast_value_obj, ast.Call) and scope:
+
+            callvisitor = topics_in_file.FuncCallVisitor()
+            callvisitor.visit(ast_value_obj.func)
+
+            # check if the function cal is valid for consideration
+            if not call_func_list or callvisitor.name in call_func_list:
+
+                for ast_args_obj in ast_value_obj.args:
+                    pass
+
+                # only dealing with keywords now
+                for ast_keywords_obj in ast_value_obj.keywords:
+                    check_and_save_attribute_and_value_to_dict(None, ast_keywords_obj.value, var_names_list, msg_fields_dict, \
+                                         scope=scope, attribute_list=attribute_list + [ast_keywords_obj.arg], limits_dict=limits_dict,\
+                                         call_func_list=call_func_list)
+
+                parameters_logger.debug("Call Func name:{0}, Args:{1}, Keywords:{2}".format(\
+                                          callvisitor.name, ast_value_obj.args, ast_value_obj.keywords))
 
         else:
             if not scope:
@@ -199,31 +231,58 @@ class ROSParameterVisitor(ast.NodeVisitor):
         self.msg_fields_dict = msg_fields_dict
         self.limits_dict = limits_dict
         self.out_of_bound_list = [] # from checking of limits_dict
+        self.possible_subcall_func = []
+        self.function_def = {}
+
+        if any(['JointTrajectory' in x for x in self.msgTypeList]):
+            self.possible_subcall_func_list = ['trajectory_msgs.msg.JointTrajectory', 'JointTrajectoryPoint']
+        else:
+            self.possible_subcall_func_list = []
+
+    def visit_FunctionDef(self,node):
+        parameters_logger.log(4, "Function definition: {0}, args:{1}, decorator_list:{2}".format(\
+                                 node.name, node.args.args, node.decorator_list))
+
+        self.function_def[node.name]=[]
+        for arg in node.args.args:
+            self.function_def[node.name].append(arg.id)
+
+
+        self.generic_visit(node)
 
     def visit_Assign(self, node):
-        # save variables
-        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
-                and isinstance(node.value, ast.Num):
-            self.scopes[0].add(node.targets[0].id, node.value.n)
-
-
-        # FIXIT: skips Subscript objects, cannot use codegen
+       # FIXIT: skips Subscript objects, cannot use codegen
         #if isinstance(node.targets[0], ast.Subscript):
         #    continue
         #parameters_logger.log(2, codegen.to_source(node))
         parameters_logger.log(2, "------")
         parameters_logger.log(2, "node targets:{0}, node value: {1}".format(node.targets, node.value))
 
-        # check if it is initializing a msgType object
-        if isinstance(node.value, ast.Call):
+        # save variables 'a = 1' to scope (Name -> Num)
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and isinstance(node.value, ast.Num):
+            self.scopes[0].add(node.targets[0].id, node.value.n)
+
+        # save variables 'a = [1,2,3]' to scope (Name -> List)
+        elif len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and isinstance(node.value, ast.List)\
+                and (isinstance(node.value.ctx, ast.Load) or isinstance(node.value.ctx, ast.Store)):
+            listVisitor = topics_in_file.ListVisitor(self.scopes[0])
+            listVisitor.visit(node.value)
+            self.scopes[0].add(node.targets[0].id, listVisitor._name)
+
+
+        # check if it is initializing a msgType object (new Func Obj with msg_type)
+        elif isinstance(node.value, ast.Call):
             callvisitor = topics_in_file.FuncCallVisitor()
             callvisitor.visit(node.value.func)
             if callvisitor.name in self.msgTypeList:
                 # store name to look for in the tree
                 namevisitor = topics_in_file.FuncCallVisitor()
                 namevisitor.visit(node.targets[0])
-                self.var_names_list.append(namevisitor.name)
-                parameters_logger.debug(node.value.args)
+                if namevisitor.name not in self.var_names_list:
+                    self.var_names_list.append(namevisitor.name)
+                    parameters_logger.debug(node.value.args)
 
                 ####################
                 ### Instantiation ##
@@ -233,19 +292,35 @@ class ROSParameterVisitor(ast.NodeVisitor):
                     self.save_vel_instantiation(node.value.args)
 
 
-        # assign target is an attribute
+        # assign target is an attribute (Attribute -> ???)
         elif isinstance(node.targets[0], ast.Attribute):
             # check if first part of attribute is a msgType Object
             self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(node.targets[0], node.value, self.var_names_list, \
-                                                self.msg_fields_dict, self.scopes[0], limits_dict=self.limits_dict))
+                                                self.msg_fields_dict, self.scopes[0], limits_dict=self.limits_dict,\
+                                                call_func_list=self.possible_subcall_func_list))
 
-        # assign target is a tuple
+        # assign target is a tuple (Tuple -> ???)
         elif isinstance(node.targets[0], ast.Tuple):
             for idx, item in enumerate(node.targets[0].elts):
                 if isinstance(item, ast.Attribute):
                     # check if first part of attribute is a msgType Object
                     self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(item, node.value.elts[idx], self.var_names_list, \
-                                                        self.msg_fields_dict, self.scopes[0],limits_dict=self.limits_dict))
+                                                        self.msg_fields_dict, self.scopes[0],limits_dict=self.limits_dict,\
+                                                        call_func_list=self.possible_subcall_func_list))
+
+
+        # assign target is a list
+        elif isinstance(node.value, ast.ListComp):
+            parameters_logger.warning('NEEDS TO BE DONE: assign target is a listComp. node target[0]: {0}'.format(node.targets[0]))
+
+        else:
+            if len(node.targets) == 1:
+                parameters_logger.warning("This assignment is not handled: target: {0}, value: {1}".format(\
+                                            type(node.targets[0]), type(node.value)))
+            else:
+                 parameters_logger.warning("This assignment is not handled: target: {0}, value: {1}".format(\
+                                            type(node.targets), type(node.value)))
+
 
         # TODO: what if the value is an equation
         self.generic_visit(node)
@@ -260,7 +335,8 @@ class ROSParameterVisitor(ast.NodeVisitor):
             for idx, ast_value_obj in enumerate(node_args_list[0].args):
                 # lienar x, y, z
                 self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(None, ast_value_obj, self.var_names_list, self.msg_fields_dict, \
-                    scope=self.scopes[0], attribute_list=['linear', attribute_field[idx]], limits_dict=self.limits_dict))
+                    scope=self.scopes[0], attribute_list=['linear', attribute_field[idx]], limits_dict=self.limits_dict,\
+                    call_func_list=self.possible_subcall_func_list))
 
                 # TODO: get line number and replace later?
 
@@ -271,7 +347,8 @@ class ROSParameterVisitor(ast.NodeVisitor):
             for idx, ast_value_obj in enumerate(node_args_list[1].args):
                 # angular x, y, z
                self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(None, ast_value_obj, self.var_names_list, self.msg_fields_dict, \
-                    scope=self.scopes[0], attribute_list=['angular', attribute_field[idx]], limits_dict=self.limits_dict))
+                    scope=self.scopes[0], attribute_list=['angular', attribute_field[idx]], limits_dict=self.limits_dict,\
+                    call_func_list=self.possible_subcall_func_list))
 
 
 
@@ -291,3 +368,19 @@ if __name__ == "__main__":
     print("Parameters of interest: {0}".format(rv.msg_fields_dict))
     print("Message type: {0}".format(rv.var_names_list))
     print("Out of bound list: {0}".format(rv.out_of_bound_list))
+
+
+
+    # for arm
+    #with open("files/move_robot_ur5.py") as f:
+    #with open("../Examples/jaco_to_ur5 (move_robot)/move_robot_jaco.py") as f:
+    with open("../Examples/ur5_to_jaco (test_move)/test_move_jaco.py") as f:
+        a = ast.parse(f.read())
+    rv = ROSParameterVisitor(['trajectory_msgs.msg.JointTrajectory','JointTrajectory'],\
+                              limits_dict={}, msg_fields_dict={})
+    rv.visit(a)
+    print("All variables: {0}".format(rv.scopes[0]))
+    print("Parameters of interest: {0}".format(rv.msg_fields_dict))
+    print("Message type: {0}".format(rv.var_names_list))
+    print("Out of bound list: {0}".format(rv.out_of_bound_list))
+    print("Function Definition: {0}".format(rv.function_def))

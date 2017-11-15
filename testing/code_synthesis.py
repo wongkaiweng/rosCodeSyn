@@ -61,10 +61,38 @@ if __name__ == "__main__":
 
         with open(filename) as f:
             ast_file = ast.parse(f.read())
+
+        # _____          _     _
+        #|_   _|_      _(_)___| |_
+        #  | | \ \ /\ / / / __| __|
+        #  | |  \ V  V /| \__ \ |_
+        #  |_|   \_/\_/ |_|___/\__|
+
         rv = parameters_in_file.ROSParameterVisitor(['geometry_msgs.msg.Twist','Twist'], limits_dict=vel_limits)
         rv.visit(ast_file)
 
-        replacement_with_redbaron.replace_parameters(red_obj, rv.out_of_bound_list)
+        if rv.out_of_bound_list:
+            replacement_with_redbaron.replace_parameters(red_obj, rv.out_of_bound_list)
+
+        #     _       _       _  _____           _           _
+        #    | | ___ (_)_ __ | ||_   _| __ __ _ (_) ___  ___| |_ ___  _ __ _   _
+        # _  | |/ _ \| | '_ \| __|| || '__/ _` || |/ _ \/ __| __/ _ \| '__| | | |
+        #| |_| | (_) | | | | | |_ | || | | (_| || |  __/ (__| || (_) | |  | |_| |
+        # \___/ \___/|_|_| |_|\__||_||_|  \__,_|/ |\___|\___|\__\___/|_|   \__, |
+        #                                     |__/                         |___/
+
+        rv = parameters_in_file.ROSParameterVisitor(['trajectory_msgs.msg.JointTrajectory','JointTrajectory'],\
+                                                     limits_dict={}, msg_fields_dict={})
+        rv.visit(ast_file)
+
+        #[attribute_list, limit_violation, limit, cur_value, var_name]
+        replacement_list = [(['joint_names'], '--', \
+                             ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', \
+                             'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'], \
+                             ['j2n6s300_joint_1', 'j2n6s300_joint_2', 'j2n6s300_joint_3', \
+                             'j2n6s300_joint_4', 'j2n6s300_joint_5', 'j2n6s300_joint_6'], 'JOINT_NAMES')]
+
+        replacement_with_redbaron.replace_parameters(red_obj, replacement_list)
 
         # save to file
         replacement_with_redbaron.save_redbardon_obj_to_file(red_obj,dest_file)
