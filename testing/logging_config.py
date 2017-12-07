@@ -8,10 +8,12 @@ import ConfigParser
 import sys, os
 import time
 
-loggerLevel = {"prob_from_files":'DEBUG',
+loggerLevel = {"prob_from_files":'INFO',
                "replacement_with_redbaron":'DEBUG',
-               "topics_in_file":'DEBUG',
-               "parameters_in_file":'DEBUG'}
+               "topics_in_file":'INFO',
+               "parameters_in_file":'2',
+               "check_limits":'DEBUG',
+               "process_urdf":'DEBUG'}
 
 def setupLogging(loggerLevel=None):
     # Set up loggers for printing error messages
@@ -47,7 +49,9 @@ def setupLogging(loggerLevel=None):
     loggers = {"prob_from_files": logging.getLogger("probs_logger"), \
                "replacement_with_redbaron": logging.getLogger("replace_logger"),
                "topics_in_file": logging.getLogger("topics_logger"),
-               "parameters_in_file": logging.getLogger("parameters_logger")}
+               "parameters_in_file": logging.getLogger("parameters_logger"),\
+               "check_limits":logging.getLogger("limits_logger"),\
+               "process_urdf":logging.getLogger("urdf_logger")}
 
     h = logging.StreamHandler()
     f = ColorLogFormatter()

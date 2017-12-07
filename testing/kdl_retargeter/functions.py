@@ -53,7 +53,7 @@ def retarget(source, source_angles, target, target_initial_angles, target_bounds
 
     eps = forwardKinematics(source,source_angles)
     objective = lambda angles: cost_joints_ee(angles, target, eps, source, EE_ratio, mode)
-    res = fmin_tnc(objective, target_initial_angles, approx_grad=1, maxfun=10000, bounds=target_bounds, disp=0)
+    res = fmin_tnc(objective, target_initial_angles, approx_grad=1, maxfun=100000, bounds=target_bounds, disp=0)
     return res
 
 def cost_joints_ee(angles, target, eps, source, EE_ratio, mode='links'):
