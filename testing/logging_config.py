@@ -13,7 +13,8 @@ loggerLevel = {"prob_from_files":'INFO',
                "topics_in_file":'INFO',
                "parameters_in_file":'2',
                "check_limits":'DEBUG',
-               "process_urdf":'DEBUG'}
+               "process_urdf":'DEBUG',
+               "code_synthesis":"DEBUG"}
 
 def setupLogging(loggerLevel=None):
     # Set up loggers for printing error messages
@@ -51,7 +52,8 @@ def setupLogging(loggerLevel=None):
                "topics_in_file": logging.getLogger("topics_logger"),
                "parameters_in_file": logging.getLogger("parameters_logger"),\
                "check_limits":logging.getLogger("limits_logger"),\
-               "process_urdf":logging.getLogger("urdf_logger")}
+               "process_urdf":logging.getLogger("urdf_logger"),\
+               "code_synthesis":logging.getLogger("synthesis_logger")}
 
     h = logging.StreamHandler()
     f = ColorLogFormatter()

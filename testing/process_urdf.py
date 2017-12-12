@@ -8,6 +8,7 @@ from PyKDL import *
 from kdl_retargeter.functions import *
 import numpy as np
 import copy
+import subprocess
 
 from urdf_parser_py.urdf import URDF
 from pykdl_utils.kdl_parser import kdl_tree_from_urdf_model
@@ -105,13 +106,152 @@ def find_longest_chain(base_link, link_list, tree, joint_limit_dict):
     return longest_chain, end_link
 
 
+def find_links_from_joints(target_joint, robot_urdf_obj, base_link="", end_link=""):
+    """
+    Find base_link and end_link based on target_joint and
+    original base_link and original_end_link
+    Output:
+    base_link: string
+    end_link: string
+    """
+    # first find first joint
+    if not (base_link or end_link):
+        for link, children_list in robot_urdf_obj.child_map.iteritems():
+            for (joint, next_link) in children_list:
+                if joint == target_joint:
+                    urdf_logger.debug("Find first joint: {0}".format(joint))
+                    return link, next_link\
+
+        urdf_logger.warning("No base_link or end_link found for joint: {0}".format(target_joint))
+        return base_link, end_link
+
+    else: # base_link and end_link is not empty
+        new_base_link = recursive_map(target_joint, robot_urdf_obj.parent_map, base_link, map_type='parent')
+        new_end_link = recursive_map(target_joint, robot_urdf_obj.child_map, end_link, map_type='child')
+
+        if new_base_link: return new_base_link, end_link
+        if new_end_link:  return base_link, new_end_link
+        if not (new_base_link or new_end_link):
+            urdf_logger.warning("Joint {0} is not found. Returning the same base_link and end_link".format(target_joint))
+            return base_link, end_link
+
+
+def recursive_map(target_joint, link_joint_map, start_link, map_type='child'):
+    """
+    This function recursively to find the link related to
+    target joint starting with link_joint_map[start_link]
+    Output:
+    new_link: string or None
+    """
+    link = None
+    if map_type == 'child':
+        if start_link in link_joint_map.keys():
+            for (joint, next_link) in link_joint_map[start_link]:
+                if joint == target_joint:
+                    return next_link
+                else:
+                    link = recursive_map(target_joint, link_joint_map, next_link, map_type)
+        return link
+
+    elif map_type == 'parent':
+        if start_link in link_joint_map.keys():
+            joint, next_link =  link_joint_map[start_link]
+            if joint == target_joint:
+                return next_link
+            else:
+                link = recursive_map(target_joint, link_joint_map, next_link, map_type)
+        return link
+    else:
+        urdf_logger.warning('Map type is not "child" or "parent": {0}'.format(map_type))
+
+
+def find_robot_URDF(robot_name, version='indigo'):
+    '''
+    Find the path to the robot URDF
+    '''
+    USE_PRECOMPILED_URDFS  =True
+
+    # path to xacros
+    XACRO_dict = {'pr2':'/opt/ros/{0}/share/pr2_description/robots/pr2.urdf.xacro'.format(version),\
+                  'youbot':'/opt/ros/{0}/share/youbot_description/robots/youbot.urdf.xacro'.format(version),\
+                  'jaco':'/opt/ros/{0}/share/jaco_description/urdf/jaco_arm.urdf.xacro'.format(version),\
+                  'kinova':'/home/{0}/ros_ws/src/kinova-ros/kinova_description/urdf/j2s6s300_standalone.xacro'.format(getpass.getuser()),\
+                  'ur3':'/opt/ros/{0}/share/ur_description/urdf/ur3_robot.urdf.xacro'.format(version),\
+                  'ur5':'/opt/ros/{0}/share/ur_description/urdf/ur5_robot.urdf.xacro'.format(version),\
+                  'nao':'/opt/ros/{0}/share/nao_description/urdf/nao_robot_v3.urdf.xacro'.format(version),\
+                  'kobuki':'/opt/ros/{0}/share/kobuki_description/urdf/kobuki.urdf.xacro'.format(version)}
+
+    path_to_config_folder = '/home/{0}/ros_examples/configs/'.format(getpass.getuser())
+    configs_dict = {'youbot':'youbot.urdf',\
+                    'jaco':'jaco_arm.urdf',\
+                    'kinova':'j2n6s300.urdf',\
+                    'ur5':'ur5.urdf',\
+                    'nao':'nao_robot_v3.urdf'}
+
+    # check if robot exists
+    if USE_PRECOMPILED_URDFS and robot_name in configs_dict.keys():
+        with open(path_to_config_folder+configs_dict[robot_name], 'r') as f:
+            urdf_string = f.read()
+        f.closed
+        return urdf_string
+
+    elif robot_name in XACRO_dict.keys():
+
+        # convert xacro to urdf
+        p = subprocess.Popen("rosrun xacro xacro {0}}".format(XACRO_dict[robot_name]), shell=True, \
+            stdout=subprocess.PIPE)
+        urdf, stderr = p.communicate()
+        #print urdf #str
+        return urdf_string
+
+    return None
+
+
+def load_chain_from_URDF_string_and_joints(urdf_string, joint_list):
+    robot = URDF.from_xml_string(urdf_string)
+
+    # check if joint is in it if not then expand both in child or parent
+    base_link, end_link = "", ""
+    for joint in joint_list:
+        base_link, end_link = find_links_from_joints(joint, robot, base_link, end_link)
+        urdf_logger.debug("Current base_link:{0}, Current end_link:{1}".format(base_link, end_link))
+
+    # return chain
+    if base_link and end_link:
+        tree = kdl_tree_from_urdf_model(robot)
+        return tree.getChain(base_link, end_link)
+    else:
+        return None
+
+
+def load_urdf_string(filename):
+    with open(filename, 'r') as f:
+        urdf_string = f.read()
+    f.closed
+    return urdf_string
+
+
 def load_chain_from_URDF(filename):
     """
     This function loads the URDF file and return
     the longest arm chain, the bounds and the assumed init angle
     """
+    with open(filename, 'r') as f:
+        xml_string = f.read()
+    f.closed
 
-    robot = URDF.from_xml_file(filename)
+    # read URDF
+    longest_chain, robot_bounds, robot_initial_angles = load_chain_from_URDF_string(xml_string)
+
+    return longest_chain, robot_bounds, robot_initial_angles
+
+
+def load_chain_from_URDF_string(urdf_string):
+    """
+    This function loads the URDF string and return
+    the longest arm chain, the bounds and the assumed init angle
+    """
+    robot = URDF.from_xml_string(urdf_string)
     tree = kdl_tree_from_urdf_model(robot)
 
     base_link, end_link = "",""
@@ -180,6 +320,13 @@ def load_chain_from_URDF(filename):
 
     return longest_chain, robot_bounds, robot_initial_angles
 
+def get_joints_from_chain(chain):
+    #get all joints from chain
+    joint_list = []
+    for idx in range(0,chain.getNrOfSegments()):
+        joint_list.append(chain.getSegment(idx).getJoint().getName().encode('ascii','ignore'))
+
+    return joint_list
 
 def plot_results(source,source_angles,target,target_initial_angles,target_bounds):
     # Plot the results:
@@ -232,10 +379,19 @@ def plot_results(source,source_angles,target,target_initial_angles,target_bounds
 if __name__ == "__main__":
 
     TEST_CASE = False
+    LINK_DEBUG = True
 
     if TEST_CASE:
         test_suite = unittest.TestLoader().loadTestsFromTestCase(TestMethods)
         unittest.TextTestRunner(verbosity=2).run(test_suite)
+    elif LINK_DEBUG:
+
+        joint_list = ['j2n6s300_joint_1', 'j2n6s300_joint_2', 'j2n6s300_joint_3', \
+                             'j2n6s300_joint_4', 'j2n6s300_joint_5', 'j2n6s300_joint_6']
+        urdf_string = load_urdf_string('/home/{0}/ros_examples/configs/j2n6s300.urdf'.format(getpass.getuser()))
+        chain = load_chain_from_URDF_string_and_joints(urdf_string, joint_list)
+
+        print get_joints_from_chain(chain)
     else:
         UR5_testing = False
         JacoTesting = False
