@@ -83,12 +83,26 @@ if __name__ == "__main__":
     if TOPIC_REPLACEMENT:
         # replace topics by reading code libraries and find a distribution
         # replace with active topics
+        synthesis_logger.info(" _____           _       ____            _                                     _   ")
+        synthesis_logger.info("|_   _|__  _ __ (_) ___  |  _ \ ___ _ __ | | __ _  ___ ___ _ __ ___   ___ _ __ | |_ ")
+        synthesis_logger.info("  | |/ _ \| '_ \| |/ __| | |_) / _ \ '_ \| |/ _` |/ __/ _ \ '_ ` _ \ / _ \ '_ \| __|")
+        synthesis_logger.info("  | | (_) | |_) | | (__  |  _ <  __/ |_) | | (_| | (_|  __/ | | | | |  __/ | | | |_ ")
+        synthesis_logger.info("  |_|\___/| .__/|_|\___| |_| \_\___| .__/|_|\__,_|\___\___|_| |_| |_|\___|_| |_|\__|")
+        synthesis_logger.info("          |_|                      |_|                                              ")
+
         red_obj = topic_replacement_by_distribution(file_path, red_obj)
 
     #######################
     ### Check Limits ######
     #######################
     if PARAMETER_REPLACEMENT:
+        synthesis_logger.info(" ____                   ____            _                                     _   ")
+        synthesis_logger.info("|  _ \ __ _ _ __ __  _ |  _ \ ___ _ __ | | __ _  ___ ___ _ __ ___   ___ _ __ | |_ ")
+        synthesis_logger.info("| |_) / _` | '__/ _` | | |_) / _ \ '_ \| |/ _` |/ __/ _ \ '_ ` _ \ / _ \ '_ \| __|")
+        synthesis_logger.info("|  __/ (_| | | | (_| | |  _ <  __/ |_) | | (_| | (_|  __/ | | | | |  __/ | | | |_ ")
+        synthesis_logger.info("|_|   \__,_|_|  \__,_| |_| \_\___| .__/|_|\__,_|\___\___|_| |_| |_|\___|_| |_|\__|")
+        synthesis_logger.info("                                 |_|                                              ")
+
         vel_limits = {'linear':{'x':{'lower': -0.2, 'upper':0.2}, \
                                 'y':{'lower': -0.2, 'upper':0.2}, \
                                 'z':{'lower': -0.2, 'upper':0.2}},\
@@ -151,6 +165,7 @@ if __name__ == "__main__":
 
                         # ensure joints_names_values and positions_values are the same length
                         if len(joints_names_values) == len(positions_values):
+                            synthesis_logger.info("================ Joint Trajectory Replacement ================")
                             synthesis_logger.info("joints_names_values:{0}".format(joints_names_values))
                             synthesis_logger.info("positions_values:{0}".format(positions_values))
 

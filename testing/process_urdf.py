@@ -509,7 +509,7 @@ def find_ret_angles_from_source_joints(source_robot_name, target_robot_name, sou
 
     # kinematic retargeting
     best_ret_angles, best_EE_ratio, all_ret_angles = kinamatic_retargeting(source_chain,source_angles,target_chain,\
-        target_initial_angles,target_bounds, mode='scale_by_unit_length')
+        target_initial_angles,target_bounds, mode=mode)
 
     return target_joints, best_ret_angles
 

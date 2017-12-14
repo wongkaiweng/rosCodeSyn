@@ -71,7 +71,7 @@ def replace_topic(red_obj, channel_type, target_topic_dict):
 
             elif ROSTOPIC_IMPORT:
                 # scan current action channels (topics, actions) for replacement
-                topic_name = find_active_channels.find_channel_name(channel_type, msg_type)
+                topic_name = find_active_channels.find_channel_name(callNode.value[0].value, channel_type, msg_type)
                 if topic_name:
                     callNode.value[0].value = topic_name
                     replace_logger.info("Replaced {0}: {1} with {2}".format(channel_type, callNode.value[0].value,\
