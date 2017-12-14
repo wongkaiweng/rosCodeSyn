@@ -41,6 +41,10 @@ def retrieve_all_topics(file_path, remove_slash=True, call_name='rospy.Publisher
     remove_slash: remove leading slash of topics if true
     """
     topic_name_dict = {}
+
+    if not os.path.isdir(file_path):
+        probs_logger.log(4, "{0} is not directory!".format(file_path))
+
     for root, dirs, files in os.walk(file_path):
         # traverse all directories
         for directory in dirs:
@@ -48,6 +52,7 @@ def retrieve_all_topics(file_path, remove_slash=True, call_name='rospy.Publisher
 
         # find all files
         for file in files:
+
             if file.endswith(".py"):
                 # get all topics in file
                 file_topic_name_dict = topics_in_file.get_topics_in_file(os.path.join(root, file), call_name)
