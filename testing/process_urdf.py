@@ -71,40 +71,59 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(rJoints<0.01, True)
 
 
+def find_robot_URDF(robot_name, version='indigo'):
+    '''
+    Find the path to the robot URDF
+    '''
+    USE_PRECOMPILED_URDFS  =True
 
-def find_longest_chain(base_link, link_list, tree, joint_limit_dict):
-    """
-    Find the longest chain
-    base_link: name of base link (string)
-    link_list: list of possible links
-    tree: kinematic tree of the robot
-    joint_limit_dict: dictionary storing joints that have limits
-    """
-    longest_chain, end_link = None, None
-    for link in link_list:
-        chain = tree.getChain(base_link, link)
+    # path to xacros
+    XACRO_dict = {'pr2':'/opt/ros/{0}/share/pr2_description/robots/pr2.urdf.xacro'.format(version),\
+                  'youbot':'/opt/ros/{0}/share/youbot_description/robots/youbot.urdf.xacro'.format(version),\
+                  'jaco':'/opt/ros/{0}/share/jaco_description/urdf/jaco_arm.urdf.xacro'.format(version),\
+                  'kinova':'/home/{0}/ros_ws/src/kinova-ros/kinova_description/urdf/j2s6s300_standalone.xacro'.format(getpass.getuser()),\
+                  'ur3':'/opt/ros/{0}/share/ur_description/urdf/ur3_robot.urdf.xacro'.format(version),\
+                  'ur5':'/opt/ros/{0}/share/ur_description/urdf/ur5_robot.urdf.xacro'.format(version),\
+                  'nao':'/opt/ros/{0}/share/nao_description/urdf/nao_robot_v3.urdf.xacro'.format(version),\
+                  'kobuki':'/opt/ros/{0}/share/kobuki_description/urdf/kobuki.urdf.xacro'.format(version)}
 
-        valid_chain = True
+    path_to_config_folder = '/home/{0}/ros_examples/configs/'.format(getpass.getuser())
+    configs_dict = {'youbot':'youbot.urdf',\
+                    'jaco':'jaco_arm.urdf',\
+                    'kinova':'j2n6s300.urdf',\
+                    'ur5':'ur5.urdf',\
+                    'nao':'nao_robot_v3.urdf'}
 
-        #check if all joints are valid
-        for idx in range(0,chain.getNrOfSegments()):
-            joint_name = chain.getSegment(idx).getJoint().getName().encode('ascii','ignore')
-            urdf_logger.log(6, joint_name)
-            if not joint_name in joint_limit_dict.keys():
-                valid_chain = False
-                urdf_logger.log(8, '-------> Not a valid chain <-------')
-                urdf_logger.log(8, "Length: {0}, #ofJoints: {1}, Base link: {2} to {3}".format(\
-                    chain.getNrOfSegments(), chain.getNrOfJoints(), base_link, link))
-                urdf_logger.log(8, "Joint {0} not in joint_limit_dict".format(joint_name))
-                break
+    # check if robot exists
+    if USE_PRECOMPILED_URDFS and robot_name in configs_dict.keys():
+        with open(path_to_config_folder+configs_dict[robot_name], 'r') as f:
+            urdf_string = f.read()
+        f.closed
+        return urdf_string
 
-        if valid_chain and (not longest_chain or \
-            longest_chain.getNrOfSegments() < chain.getNrOfSegments()):
-            longest_chain = chain
-            end_link = link
+    elif robot_name in XACRO_dict.keys():
 
-    return longest_chain, end_link
+        # convert xacro to urdf
+        p = subprocess.Popen("rosrun xacro xacro {0}}".format(XACRO_dict[robot_name]), shell=True, \
+            stdout=subprocess.PIPE)
+        urdf, stderr = p.communicate()
+        #print urdf #str
+        return urdf_string
 
+    return None
+
+# ____                             ____       _           _
+#/ ___|  ___  _   _ _ __ ___ ___  |  _ \ ___ | |__   ___ | |_
+#\___ \ / _ \| | | | '__/ __/ _ \ | |_) / _ \| '_ \ / _ \| __|
+# ___) | (_) | |_| | | | (_|  __/ |  _ < (_) | |_) | (_) | |_
+#|____/ \___/ \__,_|_|  \___\___| |_| \_\___/|_.__/ \___/ \__|
+
+
+def load_urdf_string(filename):
+    with open(filename, 'r') as f:
+        urdf_string = f.read()
+    f.closed
+    return urdf_string
 
 def find_links_from_joints(target_joint, robot_urdf_obj, base_link="", end_link=""):
     """
@@ -165,49 +184,12 @@ def recursive_map(target_joint, link_joint_map, start_link, map_type='child'):
         urdf_logger.warning('Map type is not "child" or "parent": {0}'.format(map_type))
 
 
-def find_robot_URDF(robot_name, version='indigo'):
-    '''
-    Find the path to the robot URDF
-    '''
-    USE_PRECOMPILED_URDFS  =True
-
-    # path to xacros
-    XACRO_dict = {'pr2':'/opt/ros/{0}/share/pr2_description/robots/pr2.urdf.xacro'.format(version),\
-                  'youbot':'/opt/ros/{0}/share/youbot_description/robots/youbot.urdf.xacro'.format(version),\
-                  'jaco':'/opt/ros/{0}/share/jaco_description/urdf/jaco_arm.urdf.xacro'.format(version),\
-                  'kinova':'/home/{0}/ros_ws/src/kinova-ros/kinova_description/urdf/j2s6s300_standalone.xacro'.format(getpass.getuser()),\
-                  'ur3':'/opt/ros/{0}/share/ur_description/urdf/ur3_robot.urdf.xacro'.format(version),\
-                  'ur5':'/opt/ros/{0}/share/ur_description/urdf/ur5_robot.urdf.xacro'.format(version),\
-                  'nao':'/opt/ros/{0}/share/nao_description/urdf/nao_robot_v3.urdf.xacro'.format(version),\
-                  'kobuki':'/opt/ros/{0}/share/kobuki_description/urdf/kobuki.urdf.xacro'.format(version)}
-
-    path_to_config_folder = '/home/{0}/ros_examples/configs/'.format(getpass.getuser())
-    configs_dict = {'youbot':'youbot.urdf',\
-                    'jaco':'jaco_arm.urdf',\
-                    'kinova':'j2n6s300.urdf',\
-                    'ur5':'ur5.urdf',\
-                    'nao':'nao_robot_v3.urdf'}
-
-    # check if robot exists
-    if USE_PRECOMPILED_URDFS and robot_name in configs_dict.keys():
-        with open(path_to_config_folder+configs_dict[robot_name], 'r') as f:
-            urdf_string = f.read()
-        f.closed
-        return urdf_string
-
-    elif robot_name in XACRO_dict.keys():
-
-        # convert xacro to urdf
-        p = subprocess.Popen("rosrun xacro xacro {0}}".format(XACRO_dict[robot_name]), shell=True, \
-            stdout=subprocess.PIPE)
-        urdf, stderr = p.communicate()
-        #print urdf #str
-        return urdf_string
-
-    return None
-
-
 def load_chain_from_URDF_string_and_joints(urdf_string, joint_list):
+    """
+    This function returns a kinmatic chain based on the URDF string given
+    and the list of joints
+    """
+
     robot = URDF.from_xml_string(urdf_string)
 
     # check if joint is in it if not then expand both in child or parent
@@ -223,13 +205,12 @@ def load_chain_from_URDF_string_and_joints(urdf_string, joint_list):
     else:
         return None
 
-
-def load_urdf_string(filename):
-    with open(filename, 'r') as f:
-        urdf_string = f.read()
-    f.closed
-    return urdf_string
-
+# _____                    _     ____       _           _
+#|_   _|_ _ _ __ __ _  ___| |_  |  _ \ ___ | |__   ___ | |_
+#  | |/ _` | '__/ _` |/ _ \ __| | |_) / _ \| '_ \ / _ \| __|
+#  | | (_| | | | (_| |  __/ |_  |  _ < (_) | |_) | (_) | |_
+#  |_|\__,_|_|  \__, |\___|\__| |_| \_\___/|_.__/ \___/ \__|
+#               |___/
 
 def load_chain_from_URDF(filename):
     """
@@ -320,6 +301,39 @@ def load_chain_from_URDF_string(urdf_string):
 
     return longest_chain, robot_bounds, robot_initial_angles
 
+def find_longest_chain(base_link, link_list, tree, joint_limit_dict):
+    """
+    Find the longest chain
+    base_link: name of base link (string)
+    link_list: list of possible links
+    tree: kinematic tree of the robot
+    joint_limit_dict: dictionary storing joints that have limits
+    """
+    longest_chain, end_link = None, None
+    for link in link_list:
+        chain = tree.getChain(base_link, link)
+
+        valid_chain = True
+
+        #check if all joints are valid
+        for idx in range(0,chain.getNrOfSegments()):
+            joint_name = chain.getSegment(idx).getJoint().getName().encode('ascii','ignore')
+            urdf_logger.log(6, joint_name)
+            if not joint_name in joint_limit_dict.keys():
+                valid_chain = False
+                urdf_logger.log(8, '-------> Not a valid chain <-------')
+                urdf_logger.log(8, "Length: {0}, #ofJoints: {1}, Base link: {2} to {3}".format(\
+                    chain.getNrOfSegments(), chain.getNrOfJoints(), base_link, link))
+                urdf_logger.log(8, "Joint {0} not in joint_limit_dict".format(joint_name))
+                break
+
+        if valid_chain and (not longest_chain or \
+            longest_chain.getNrOfSegments() < chain.getNrOfSegments()):
+            longest_chain = chain
+            end_link = link
+
+    return longest_chain, end_link
+
 def get_joints_from_chain(chain):
     #get all joints from chain
     joint_list = []
@@ -328,7 +342,160 @@ def get_joints_from_chain(chain):
 
     return joint_list
 
-def plot_results(source,source_angles,target,target_initial_angles,target_bounds):
+# ____      _                       _
+#|  _ \ ___| |_ __ _ _ __ __ _  ___| |_
+#| |_) / _ \ __/ _` | '__/ _` |/ _ \ __|
+#|  _ <  __/ || (_| | | | (_| |  __/ |_
+#|_| \_\___|\__\__,_|_|  \__, |\___|\__|
+#                        |___/
+
+def find_best_retarget(source,source_angles,target,target_initial_angles,target_bounds, mode='scale_by_unit_length'):
+    """
+    Find best retarget result by changing EE ratio: The bias to full arm versus just end
+    effector
+    Inputs:
+    mode: 'original',"joints_only",'links','scale_by_length','scale_by_unit_length'
+    """
+    eps = forwardKinematics(source,source_angles)
+    urdf_logger.info( "Retargeting Mode: {0}".format(mode))
+
+    # track best case
+    best_ret_angles = None
+    best_cost = None
+    best_EE_ratio = None
+    all_ret_angles = []
+    for idx, EE_ratio in enumerate([0,0.5,1]):
+        ret = retarget(source,source_angles,target,target_initial_angles,target_bounds,\
+            EE_ratio=EE_ratio, mode=mode)
+        ret_angles = ret[0].tolist()
+        ret_ep = forwardKinematics(target,ret_angles)
+        cost = calculate_rJoints_with_scaled_chain(np.array(ret_ep), target, np.array(eps), source)
+        all_ret_angles.append(ret_angles)
+        urdf_logger.debug( "EE_ratio: {0} Cost: {1}".format(EE_ratio, cost))
+        if not best_cost or best_cost > cost:
+            best_cost = cost
+            best_ret_angles = ret_angles
+            best_EE_ratio = EE_ratio
+
+    urdf_logger.info( "Best EE_ratio: {0} Best Cost: {1}".format(best_EE_ratio, best_cost))
+
+    #urdf_logger.info("Initial Endpoints:")
+    #urdf_logger.info(forwardKinematics(target,target_initial_angles))
+    urdf_logger.info("Best Retargeted Angles: {0}".format(best_ret_angles))
+    #urdf_logger.info("Retargeted Endpoints:")
+    #urdf_logger.info(forwardKinematics(target,best_ret_angles))
+
+    return best_ret_angles, best_EE_ratio, all_ret_angles
+
+def plot_retarget(source,source_angles,target,target_initial_angles,target_bounds,all_ret_angles=[], best_EE_ratio=None):
+    """
+    This function plots the results of find_best_retarget function
+    """
+    # plot results
+    fig = plt.figure()
+    ax = p3.Axes3D(fig)
+    ax.set_aspect('equal')
+    draw(source, source_angles, ax,'b', label='Source Config')
+    draw(target, target_initial_angles, ax, 'k', label='Target Init')
+    color = ['g','c','r','y','o-']
+    EE_ratio = [0,0.5,1]
+
+    if not all_ret_angles:
+        # find best ret angles
+        best_ret_angles, best_EE_ratio, all_ret_angles = \
+            find_best_retarget(source,source_angles,target,target_initial_angles,target_bounds)
+
+    for idx, ret_angles in enumerate(all_ret_angles):
+        draw(target, ret_angles, ax, color[idx], label='Target Final EE_ratio:{0}'.format(EE_ratio[idx]))
+
+    def set_axes_equal(ax):
+        '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
+        cubes as cubes, etc..  This is one possible solution to Matplotlib's
+        ax.set_aspect('equal') and ax.axis('equal') not working for 3D.
+
+        Input
+          ax: a matplotlib axis, e.g., as output from plt.gca().
+
+        From: https://stackoverflow.com/questions/13685386/matplotlib-equal-unit-length-with-equal-aspect-ratio-z-axis-is-not-equal-to
+        '''
+
+        x_limits = ax.get_xlim3d()
+        y_limits = ax.get_ylim3d()
+        z_limits = ax.get_zlim3d()
+
+        x_range = abs(x_limits[1] - x_limits[0])
+        x_middle = np.mean(x_limits)
+        y_range = abs(y_limits[1] - y_limits[0])
+        y_middle = np.mean(y_limits)
+        z_range = abs(z_limits[1] - z_limits[0])
+        z_middle = np.mean(z_limits)
+
+        # The plot bounding box is a sphere in the sense of the infinity
+        # norm, hence I call half the max range the plot radius.
+        plot_radius = 0.5*max([x_range, y_range, z_range])
+
+        ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+        ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+        ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+
+    plt.title('EE_ratio: {0} for config: {1}'.format(best_EE_ratio, source_angles))
+    set_axes_equal(ax)
+    plt.show()
+
+"""
+def plot_retarget_with_ret_angles_list(source,source_angles,target,target_initial_angles, all_ret_angles):
+    #This function takes in all_ret_angles list and plot the results
+    # plot results
+    fig = plt.figure()
+    ax = p3.Axes3D(fig)
+    ax.set_aspect('equal')
+    draw(source, source_angles, ax,'b', label='Source Config')
+    draw(target, target_initial_angles, ax, 'k', label='Target Init')
+    color = ['g','c','r']
+    EE_ratio = [0,0.5,1]
+    for idx, ret_angles in enumerate(all_ret_angles):
+        draw(target, ret_angles, ax, color[idx], label='Target Final EE_ratio:{0}'.format(EE_ratio[idx]))
+
+
+    plt.show()
+"""
+def find_ret_angles_from_source_joints(source_robot_name, target_robot_name, source_joint_list, source_angles, mode='scale_by_unit_length'):
+    #####################
+    # load source robot #
+    #####################
+    source_urdf_string = find_robot_URDF(source_robot_name)
+    if source_urdf_string:
+        source_chain = load_chain_from_URDF_string_and_joints(source_urdf_string, source_joint_list)
+    else:
+        urdf_logger.warning("We cannot get a source URDF!")
+        return None, None
+
+    #####################
+    # load target robot #
+    #####################
+    # first get urdf_string
+    target_urdf_string = find_robot_URDF(target_robot_name)
+    if target_urdf_string:
+        target_chain, target_bounds, target_initial_angles = load_chain_from_URDF_string(target_urdf_string)
+    else:
+        urdf_logger.warning("We cannot get a target URDF!")
+        return None, None
+
+    # get all the joints of the target
+    target_joints =  get_joints_from_chain(target_chain)
+    urdf_logger.debug('target_joints: {0}'.format(target_joints))
+
+    ########################
+    # kinmatic retargeting #
+    ########################
+    best_ret_angles, best_EE_ratio, all_ret_angles = \
+        find_best_retarget(source_chain,source_angles,target_chain,target_initial_angles,target_bounds, mode=mode)
+    plot_retarget(source_chain,source_angles,target_chain,target_initial_angles, target_bounds, all_ret_angles, best_EE_ratio)
+
+    return target_joints, best_ret_angles
+
+"""
+def plot_retarget(source,source_angles,target,target_initial_angles,target_bounds):
     # Plot the results:
     #plt.ion()
     #mode_list = ['original',"joints_only",'links','scale_by_length','scale_by_unit_length']
@@ -372,8 +539,7 @@ def plot_results(source,source_angles,target,target_initial_angles,target_bounds
     ret_ep = forwardKinematics(target,ret_angles)
     urdf_logger.info("Retargeted Endpoints: ")
     urdf_logger.info(ret_ep)
-
-    plt.show()
+"""
 
 
 if __name__ == "__main__":
@@ -386,12 +552,15 @@ if __name__ == "__main__":
         unittest.TextTestRunner(verbosity=2).run(test_suite)
     elif LINK_DEBUG:
 
-        joint_list = ['j2n6s300_joint_1', 'j2n6s300_joint_2', 'j2n6s300_joint_3', \
-                             'j2n6s300_joint_4', 'j2n6s300_joint_5', 'j2n6s300_joint_6']
-        urdf_string = load_urdf_string('/home/{0}/ros_examples/configs/j2n6s300.urdf'.format(getpass.getuser()))
-        chain = load_chain_from_URDF_string_and_joints(urdf_string, joint_list)
+        source_robot_name = 'ur5'
+        target_robot_name = 'kinova'
+        source_joint_list = ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', \
+                             'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
+        source_angles = [2.2,0,-1.57,0,0,0]
+        target_joints, best_ret_angles = \
+           find_ret_angles_from_source_joints(source_robot_name, target_robot_name, source_joint_list, source_angles)
 
-        print get_joints_from_chain(chain)
+        print target_joints, best_ret_angles
     else:
         UR5_testing = False
         JacoTesting = False
@@ -430,7 +599,7 @@ if __name__ == "__main__":
             target = ur5_chain_orig
             target_initial_angles = ur5_initial_angles_orig
             target_bounds = ur5_bounds_orig
-            plot_results(source,source_angles,target,target_initial_angles,target_bounds)
+            plot_retarget(source,source_angles,target,target_initial_angles,target_bounds)
 
             # test ur original to ur fn
             urdf_logger.info("--Testing ur original to ur fn --")
@@ -439,7 +608,7 @@ if __name__ == "__main__":
             target = ur5_chain
             target_initial_angles = ur5_initial_angles
             target_bounds = ur5_bounds
-            plot_results(source,source_angles,target,target_initial_angles,target_bounds)
+            plot_retarget(source,source_angles,target,target_initial_angles,target_bounds)
 
         ##################################################
         #      _               _____         _                        ____  ___   ___   ____
@@ -475,7 +644,7 @@ if __name__ == "__main__":
             target = jaco_chain_orig
             target_initial_angles = jaco_initial_angles_orig
             target_bounds = jaco_bounds_orig
-            plot_results(source,source_angles,target,target_initial_angles,target_bounds)
+            plot_retarget(source,source_angles,target,target_initial_angles,target_bounds)
 
             # test jaco fn to jaco original
             urdf_logger.info("--Testing jaco original to jaco fn --")
@@ -484,7 +653,7 @@ if __name__ == "__main__":
             target = jaco_chain
             target_initial_angles = jaco_init_angles
             target_bounds = jaco_bounds
-            plot_results(source,source_angles,target,target_initial_angles,target_bounds)
+            plot_retarget(source,source_angles,target,target_initial_angles,target_bounds)
 
         ###############################################
         #                   _           _   ____                    ____        _           ____  ___   ___   ____
@@ -520,7 +689,7 @@ if __name__ == "__main__":
             target = youbot_chain_orig
             target_initial_angles = youbot_initial_angles_orig
             target_bounds = youbot_bounds_orig
-            plot_results(source,source_angles,target,target_initial_angles,target_bounds)
+            plot_retarget(source,source_angles,target,target_initial_angles,target_bounds)
 
 
             # test youBot original to youbot fn
@@ -530,7 +699,7 @@ if __name__ == "__main__":
             target = youbot_chain
             target_initial_angles = youbot_initial_angles
             target_bounds = youbot_bounds
-            plot_results(source,source_angles,target,target_initial_angles,target_bounds)
+            plot_retarget(source,source_angles,target,target_initial_angles,target_bounds)
 
         if mixTesting:
             jaco_angles = [0.0,2.0,1.3,2.2,2.0,1.0]
@@ -540,7 +709,7 @@ if __name__ == "__main__":
             target = ur5_chain
             target_initial_angles = ur5_initial_angles
             target_bounds = ur5_bounds
-            plot_results(source,source_angles,target,target_initial_angles,target_bounds)
+            plot_retarget(source,source_angles,target,target_initial_angles,target_bounds)
 
 
             # UR5 to youbot
@@ -549,7 +718,7 @@ if __name__ == "__main__":
             target = youbot_chain
             target_initial_angles = youbot_initial_angles
             target_bounds = youbot_bounds
-            plot_results(source,source_angles,target,target_initial_angles,target_bounds)
+            plot_retarget(source,source_angles,target,target_initial_angles,target_bounds)
 
         #  _            _   _
         # | |_ ___  ___| |_(_)_ __   __ _

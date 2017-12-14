@@ -30,16 +30,17 @@ def forwardKinematics(chain, angles):
 
 
 def draw(chain, angles, ax, plt_opts="", label=""):
-   ''' Draws the KDL chain passed in. Angles are the specified chain angles.  ax
-   is an instance of p3.Axes3D.  plt_opts are plot options passed directly in.'''
-   ep = forwardKinematics(chain,angles)
-   ep = np.array(ep)
-   #ax = p3.Axes3D(figure)
-   x = ep[:,0]
-   y = ep[:,1]
-   z = ep[:,2]
-   ax.plot(x,y,z,plt_opts, label=label)
-   ax.legend()
+    ''' Draws the KDL chain passed in. Angles are the specified chain angles.  ax
+    is an instance of p3.Axes3D.  plt_opts are plot options passed directly in.'''
+    ep = forwardKinematics(chain,angles)
+    ep = np.array(ep)
+    #ax = p3.Axes3D(figure)
+    x = ep[:,0]
+    y = ep[:,1]
+    z = ep[:,2]
+    ax.plot(x,y,z,plt_opts, label=label)
+    ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+
 
 def retarget(source, source_angles, target, target_initial_angles, target_bounds, EE_ratio=1, mode='links'):
     ''' 
