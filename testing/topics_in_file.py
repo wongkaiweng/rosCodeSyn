@@ -266,7 +266,7 @@ class ROSCodeVisitor(ast.NodeVisitor):
 
 
 def get_topics_in_file(fname, call_name='rospy.Publisher'):
-    ret = []
+    ret = {}
     topics_logger.log(6, 'call_name in get_topics_in_file fn.:{0}'.format(call_name))
     try:
         with open(fname) as f:
