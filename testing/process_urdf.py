@@ -459,17 +459,20 @@ def plot_retarget_with_ret_angles_list(source,source_angles,target,target_initia
 
     plt.show()
 """
-def find_ret_angles_from_source_joints(source_robot_name, target_robot_name, source_joint_list, source_angles, mode='scale_by_unit_length'):
+def get_source_info(source_robot_name, source_joint_list):
     #####################
     # load source robot #
     #####################
     source_urdf_string = find_robot_URDF(source_robot_name)
     if source_urdf_string:
         source_chain = load_chain_from_URDF_string_and_joints(source_urdf_string, source_joint_list)
+        return source_chain
     else:
         urdf_logger.warning("We cannot get a source URDF!")
-        return None, None
+        return None
 
+
+def get_target_info(target_robot_name):
     #####################
     # load target robot #
     #####################
@@ -477,20 +480,36 @@ def find_ret_angles_from_source_joints(source_robot_name, target_robot_name, sou
     target_urdf_string = find_robot_URDF(target_robot_name)
     if target_urdf_string:
         target_chain, target_bounds, target_initial_angles = load_chain_from_URDF_string(target_urdf_string)
+        return target_chain, target_bounds, target_initial_angles
     else:
         urdf_logger.warning("We cannot get a target URDF!")
-        return None, None
+        return None, None, None
 
-    # get all the joints of the target
-    target_joints =  get_joints_from_chain(target_chain)
-    urdf_logger.debug('target_joints: {0}'.format(target_joints))
-
+def kinamatic_retargeting(source_chain,source_angles,target_chain,target_initial_angles,target_bounds, mode='scale_by_unit_length'):
     ########################
     # kinmatic retargeting #
     ########################
     best_ret_angles, best_EE_ratio, all_ret_angles = \
         find_best_retarget(source_chain,source_angles,target_chain,target_initial_angles,target_bounds, mode=mode)
     plot_retarget(source_chain,source_angles,target_chain,target_initial_angles, target_bounds, all_ret_angles, best_EE_ratio)
+
+    return best_ret_angles, best_EE_ratio, all_ret_angles
+
+
+def find_ret_angles_from_source_joints(source_robot_name, target_robot_name, source_joint_list, source_angles, mode='scale_by_unit_length'):
+    # get source and target
+    source_chain = get_source_info(source_robot_name, source_joint_list)
+    target_chain, target_bounds, target_initial_angles = get_target_info(target_robot_name)
+
+    if not (source_chain and target_chain): return None, None
+
+    # get all the joints of the target
+    target_joints =  get_joints_from_chain(target_chain)
+    urdf_logger.debug('target_joints: {0}'.format(target_joints))
+
+    # kinematic retargeting
+    best_ret_angles, best_EE_ratio, all_ret_angles = kinamatic_retargeting(source_chain,source_angles,target_chain,\
+        target_initial_angles,target_bounds, mode='scale_by_unit_length')
 
     return target_joints, best_ret_angles
 
