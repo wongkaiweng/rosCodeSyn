@@ -14,7 +14,8 @@ loggerLevel = {"prob_from_files":'INFO',
                "parameters_in_file":'2',
                "check_limits":'DEBUG',
                "process_urdf":'DEBUG',
-               "code_synthesis":"DEBUG"}
+               "code_synthesis":"DEBUG",
+               "find_active_channels":"DEBUG"}
 
 def setupLogging(loggerLevel=None):
     # Set up loggers for printing error messages
@@ -53,7 +54,8 @@ def setupLogging(loggerLevel=None):
                "parameters_in_file": logging.getLogger("parameters_logger"),\
                "check_limits":logging.getLogger("limits_logger"),\
                "process_urdf":logging.getLogger("urdf_logger"),\
-               "code_synthesis":logging.getLogger("synthesis_logger")}
+               "code_synthesis":logging.getLogger("synthesis_logger"),\
+               "find_active_channels":logging.getLogger("channel_logger")}
 
     h = logging.StreamHandler()
     f = ColorLogFormatter()

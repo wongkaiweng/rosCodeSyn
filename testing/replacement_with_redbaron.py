@@ -4,6 +4,15 @@ import logging
 import os
 import ast
 
+# see if we can do active check with rostopic
+try:
+    import rostopic
+    ROSTOPIC_IMPORT=True
+except:
+    ROSTOPIC_IMPORT=False
+
+import find_active_channels
+
 import logging_config
 replace_logger = logging.getLogger("replace_logger")
 
@@ -59,6 +68,18 @@ def replace_topic(red_obj, channel_type, target_topic_dict):
                                                                 target_topic_dict[msg_type]))
                 # replace topic name with new Name Node
                 callNode.value[0].value = target_topic_dict[msg_type]
+
+            elif ROSTOPIC_IMPORT:
+                # scan current action channels (topics, actions) for replacement
+                topic_name = find_active_channels.find_channel_name(channel_type, msg_type)
+                if topic_name:
+                    callNode.value[0].value = topic_name
+                    replace_logger.info("Replaced {0}: {1} with {2}".format(channel_type, callNode.value[0].value,\
+                                                topic_name))
+                else:
+                    # throw a warning
+                    replace_logger.warning('{0} is not found and thus not replaced!'.format(msg_type))
+
             else:
                 # throw a warning
                 replace_logger.warning('{0} is not found and thus not replaced!'.format(msg_type))
@@ -102,6 +123,11 @@ def replace_parameters(red_obj, out_of_bound_list):
                         isinstance(red_obj, redbaron.nodes.FloatNode) or \
                         isinstance(red_obj, redbaron.nodes.StringNode):
                         redbaron_list.append(ast.literal_eval(red_obj.value))
+
+                    elif isinstance(red_obj, redbaron.nodes.UnitaryOperatorNode):
+                        # get the full value 'operator' + 'value'
+                        redbaron_list.append(ast.literal_eval(red_obj.value + red_obj.target.value))
+
                     else:
                         valid_list = False
                         break
