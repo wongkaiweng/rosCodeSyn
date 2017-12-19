@@ -1,0 +1,43 @@
+# Sphero yaml file that describes velocity limits
+
+# Instructions:
+# -------------------------
+# lower - lower limit
+# upper - upper limit
+# deadband - operating range = (deadband - upper) and (lower - -1*deadband)
+# None - not applicable
+#
+# Please put in the actual lower and upper limit
+# e.g.: put lower = -0.2 and upper = 0.2 instead of
+#           lower = None and upper = 0.2 and expect it
+#           to mean lower = -1*upper and upper = upper
+
+# linear.x and linear.y converts to cmd_speed and cmd_heading at the end
+# see sphero.py
+
+linear:
+  x:
+    lower: -80
+    upper: 80
+    deadband: 30
+  y:
+    lower: -80
+    upper: 80
+    deadband: 30
+  z:
+    lower: None
+    upper: None
+    deadband: None
+angular:
+  x:
+    lower: None
+    upper: None
+    deadband: None
+  y:
+    lower: None
+    upper: None
+    deadband: None
+  z:
+    lower: None
+    upper: None
+    deadband: None
