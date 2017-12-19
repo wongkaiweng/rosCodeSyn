@@ -13,7 +13,7 @@ import subprocess
 from urdf_parser_py.urdf import URDF
 from pykdl_utils.kdl_parser import kdl_tree_from_urdf_model
 
-import check_limits
+import process_limits
 
 import logging
 import logging_config
@@ -27,7 +27,7 @@ class TestMethods(unittest.TestCase):
             and store the result as class variable
         """
         super(TestMethods, cls).setUpClass()
-        target_robot = URDF.from_xml_file('/home/{0}/ros_examples/configs/ur5.urdf'.format(getpass.getuser()))
+        target_robot = URDF.from_xml_file('/home/{0}/ros_examples/config_files/urdf/ur5.urdf'.format(getpass.getuser()))
         target_tree = kdl_tree_from_urdf_model(target_robot)
         base_link = 'base_link'
         end_link = 'ee_link'
@@ -87,16 +87,16 @@ def find_robot_URDF(robot_name, version='indigo'):
                   'nao':'/opt/ros/{0}/share/nao_description/urdf/nao_robot_v3.urdf.xacro'.format(version),\
                   'kobuki':'/opt/ros/{0}/share/kobuki_description/urdf/kobuki.urdf.xacro'.format(version)}
 
-    path_to_config_folder = '/home/{0}/ros_examples/configs/'.format(getpass.getuser())
-    configs_dict = {'youbot':'youbot.urdf',\
+    path_to_config_folder = '/home/{0}/ros_examples/config_files/urdf/'.format(getpass.getuser())
+    urdf_dict = {'youbot':'youbot.urdf',\
                     'jaco':'jaco_arm.urdf',\
                     'kinova':'j2n6s300.urdf',\
                     'ur5':'ur5.urdf',\
                     'nao':'nao_robot_v3.urdf'}
 
     # check if robot exists
-    if USE_PRECOMPILED_URDFS and robot_name in configs_dict.keys():
-        with open(path_to_config_folder+configs_dict[robot_name], 'r') as f:
+    if USE_PRECOMPILED_URDFS and robot_name in urdf_dict.keys():
+        with open(path_to_config_folder+urdf_dict[robot_name], 'r') as f:
             urdf_string = f.read()
         f.closed
         return urdf_string
@@ -247,7 +247,7 @@ def load_chain_from_URDF_string(urdf_string):
             link_list.append(link)
 
     # get joint limits
-    joint_limit_dict = check_limits.make_dic_from_robObj(robot)
+    joint_limit_dict = process_limits.make_joint_limit_dic_from_robObj(robot)
 
     #print robot.joint_map.values()[0]
     # use root if we cannot find base link
@@ -592,14 +592,14 @@ if __name__ == "__main__":
         #  \___/|_| \_\____/ \__\___/ \___/|_| \_\____/       \____|\___/ \___/|____/
 
         urdf_logger.info('----- ur5 (from fn.)------')
-        ur5_chain, ur5_bounds, ur5_initial_angles = load_chain_from_URDF('/home/{0}/ros_examples/configs/ur5.urdf'.format(getpass.getuser()))
+        ur5_chain, ur5_bounds, ur5_initial_angles = load_chain_from_URDF('/home/{0}/ros_examples/config_files/urdf/ur5.urdf'.format(getpass.getuser()))
         urdf_logger.debug( "Forward Init: {0}".format(forwardKinematics(ur5_chain,ur5_initial_angles)))
         #print "Forward Final: {0}".format(forwardKinematics(ur5_chain,target_initial_angles))
         urdf_logger.info("UR5 Joints: {0}".format(ur5_chain.getNrOfJoints()))
         urdf_logger.info("UR5 Segments: {0}".format(ur5_chain.getNrOfSegments()))
 
         urdf_logger.info('----- ur5 (original)------')
-        robot_ur5 = URDF.from_xml_file('/home/{0}/ros_examples/configs/ur5.urdf'.format(getpass.getuser()))
+        robot_ur5 = URDF.from_xml_file('/home/{0}/ros_examples/config_files/urdf/ur5.urdf'.format(getpass.getuser()))
         ur5_tree = kdl_tree_from_urdf_model(robot_ur5)
         ur5_base_link = 'base_link'
         ur5_end_link = 'ee_link'
@@ -637,7 +637,7 @@ if __name__ == "__main__":
         #  \___/ \__,_|\___\___/|_|\___/ \___/ \__,_|\___\___/       \____|\___/ \___/ |____/
 
         urdf_logger.info('----- jaco (original)------')
-        robot_jaco = URDF.from_xml_file('/home/{0}/ros_examples/configs/jaco_arm.urdf'.format(getpass.getuser()))
+        robot_jaco = URDF.from_xml_file('/home/{0}/ros_examples/config_files/urdf/jaco_arm.urdf'.format(getpass.getuser()))
         jaco_tree = kdl_tree_from_urdf_model(robot_jaco)
         jaco_base_link = 'jaco_link_base'
         jaco_end_link = 'jaco_link_hand'
@@ -649,7 +649,7 @@ if __name__ == "__main__":
         urdf_logger.info("Jaco Segments: {0}".format(jaco_chain_orig.getNrOfSegments()))
 
         urdf_logger.info('----- jaco (from fn.)------')
-        jaco_chain, jaco_bounds, jaco_init_angles = load_chain_from_URDF('/home/{0}/ros_examples/configs/jaco_arm.urdf'.format(getpass.getuser()))
+        jaco_chain, jaco_bounds, jaco_init_angles = load_chain_from_URDF('/home/{0}/ros_examples/config_files/urdf/jaco_arm.urdf'.format(getpass.getuser()))
         urdf_logger.debug("Forward Init: {0}".format(forwardKinematics(jaco_chain,jaco_init_angles)))
         #print "Forward Final: {0}".format(forwardKinematics(ur5_chain,target_initial_angles))
         urdf_logger.info("Jaco Joints: {0}".format(jaco_chain.getNrOfJoints()))
@@ -683,7 +683,7 @@ if __name__ == "__main__":
         #  |___/                                   |___/
 
         urdf_logger.info('----- youbot (original)------')
-        robot_youbot = URDF.from_xml_file('/home/{0}/ros_examples/configs/youbot.urdf'.format(getpass.getuser()))
+        robot_youbot = URDF.from_xml_file('/home/{0}/ros_examples/config_files/urdf/youbot.urdf'.format(getpass.getuser()))
         youbot_tree = kdl_tree_from_urdf_model(robot_youbot)
         youbot_tree_base_link = 'arm_link_0'
         youbot_tree_end_link = 'gripper_palm_link'
@@ -695,7 +695,7 @@ if __name__ == "__main__":
         youbot_bounds_orig = [(-360,360),(-360,360),(-360,360),(-360,360),(-360,360)] ## need to change
 
         urdf_logger.info('----- youbot (from fn.)------')
-        youbot_chain, youbot_bounds, youbot_initial_angles = load_chain_from_URDF('/home/{0}/ros_examples/configs/youbot.urdf'.format(getpass.getuser()))
+        youbot_chain, youbot_bounds, youbot_initial_angles = load_chain_from_URDF('/home/{0}/ros_examples/config_files/urdf/youbot.urdf'.format(getpass.getuser()))
         urdf_logger.debug("Forward Init: {0}".format(forwardKinematics(youbot_chain,youbot_initial_angles)))
         urdf_logger.info("youbot_cahin Joints: {0}".format(youbot_chain.getNrOfJoints()))
         urdf_logger.info("youbot_cahin Segments: {0}".format(youbot_chain.getNrOfSegments()))
