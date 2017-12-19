@@ -8,7 +8,7 @@ import ConfigParser
 import sys, os
 import time
 
-LOG_CLEAN = True
+LOG_CLEAN = False
 OVERALL_LEVEL = "INFO"
 
 if LOG_CLEAN:
@@ -16,29 +16,31 @@ if LOG_CLEAN:
     replacement_with_redbaron_level = OVERALL_LEVEL
     topics_in_file_level = OVERALL_LEVEL
     parameters_in_file_level = OVERALL_LEVEL
-    check_limits_level = OVERALL_LEVEL
+    process_limits_level = OVERALL_LEVEL
     process_urdf_level = OVERALL_LEVEL
     code_synthesis_level = OVERALL_LEVEL
     find_active_channels_level = OVERALL_LEVEL
+    process_yaml_level = OVERALL_LEVEL
 else:
     prob_from_files_level = 'DEBUG'
     replacement_with_redbaron_level = 'DEBUG'
     topics_in_file_level = 'DEBUG'
     parameters_in_file_level = 'DEBUG'
-    check_limits_level = 'DEBUG'
+    process_limits_level = 'DEBUG'
     process_urdf_level = 'DEBUG'
     code_synthesis_level = 'DEBUG'
     find_active_channels_level = 'DEBUG'
-
+    process_yaml_level = 'DEBUG'
 
 loggerLevel = {"prob_from_files":prob_from_files_level,
                "replacement_with_redbaron":replacement_with_redbaron_level,
                "topics_in_file":topics_in_file_level,
                "parameters_in_file":parameters_in_file_level,
-               "check_limits":check_limits_level,
+               "process_limits":process_limits_level,
                "process_urdf":process_urdf_level,
                "code_synthesis":code_synthesis_level,
-               "find_active_channels":find_active_channels_level}
+               "find_active_channels":find_active_channels_level,
+               "process_yaml":process_yaml_level}
 
 def setupLogging(loggerLevel=None):
     # Set up loggers for printing error messages
@@ -75,10 +77,11 @@ def setupLogging(loggerLevel=None):
                "replacement_with_redbaron": logging.getLogger("replace_logger"),
                "topics_in_file": logging.getLogger("topics_logger"),
                "parameters_in_file": logging.getLogger("parameters_logger"),\
-               "check_limits":logging.getLogger("limits_logger"),\
+               "process_limits":logging.getLogger("limits_logger"),\
                "process_urdf":logging.getLogger("urdf_logger"),\
                "code_synthesis":logging.getLogger("synthesis_logger"),\
-               "find_active_channels":logging.getLogger("channel_logger")}
+               "find_active_channels":logging.getLogger("channel_logger"),\
+               "process_yaml":logging.getLogger("yaml_logger")}
 
     h = logging.StreamHandler()
     f = ColorLogFormatter()
