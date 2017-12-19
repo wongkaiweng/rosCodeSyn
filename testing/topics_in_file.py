@@ -91,7 +91,8 @@ class Scope():
             return None
 
     def add(self, name, value):
-        if name in self.variables:
+        if name in self.variables and \
+           value not in self.variables[name]:
             self.variables[name].append(value)
         else:
             self.variables[name] = [value]
@@ -276,7 +277,7 @@ def get_topics_in_file(fname, call_name='rospy.Publisher'):
         ret = rv.ret
     except (IndentationError,SyntaxError) as e:
         # traceback.print_exc()
-        print 'Compilation error: {0}'.format(fname)
+        topics_logger.debug('Compilation error: {0}'.format(fname))
     except Exception as e:
         traceback.print_exc()
         print 'Directory: {0}'.format(fname)
