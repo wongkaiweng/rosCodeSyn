@@ -75,12 +75,12 @@ def scale_velocity_command(field, command, source_limit_dict, target_limit_dict)
                         "differential drive to holonomic drive or vice versa")
 
     # check if the original command is not within source limits
-    if command < source_command_info['lower']:
+    if source_command_info['lower'] != 'None' and command < source_command_info['lower']:
         yaml_logger.warning('Command: {0} is smaller than lower limit:{1}.'.format(\
             command, source_command_info['lower']) + ' Capped at lower limit.')
         command = float(source_command_info['lower'])
 
-    elif source_command_info['upper'] < command:
+    elif source_command_info['upper'] != 'None' and source_command_info['upper'] < command:
         yaml_logger.warning('Command: {0} is bigger than lower limit:{1}.'.format(\
             command, source_command_info['upper']) + ' Capped at upper limit.')
         command = float(source_command_info['upper'])
@@ -93,38 +93,64 @@ def scale_velocity_command(field, command, source_limit_dict, target_limit_dict)
         command = math.copysign(1, command)*float(source_command_info['deadband'])
 
 
-    # get source and target command difference
-    if command:
-        source_diff = float(source_command_info['upper'])
-        target_diff = float(target_command_info['upper'])
-        yaml_logger.debug('Scale from Upper: {0} to {1}'.format(\
-                        source_command_info['upper'], target_command_info['upper']))
+    # Handle the None Cases
+    # check if target yaml file is correct
+    if (not command and target_command_info['lower'] == 'None') or \
+       (command and target_command_info['upper'] == 'None'):
+       # only one of them is None
+        yaml_logger.warning("This is not valid. upper: {0} and lower: {1} with command: {2}".format(\
+                             target_command_info['lower'], target_command_info['upper'], command))
+        return command, False
+    elif target_command_info['lower'] == 'None' and target_command_info['upper'] == 'None':
+        # this field is not invalid for the target
+        yaml_logger.error("This field {0} is not valid for the target robot.".format(field))
+        return command, False
+
+
+    # if we can do scaling properly
+    if (command and source_command_info['upper'] != 'None' and target_command_info['upper'] != 'None') or \
+       (not command and source_command_info['lower'] != 'None' and target_command_info['lower'] != 'None'):
+
+        # get source and target command difference
+        if command: # positive command
+            source_diff = float(source_command_info['upper'])
+            target_diff = float(target_command_info['upper'])
+            yaml_logger.debug('Scale from Upper: {0} to {1}'.format(\
+                            source_command_info['upper'], target_command_info['upper']))
+        else: # negative command
+            source_diff = float(abs(source_command_info['lower']))
+            target_diff = float(abs(target_command_info['lower']))
+            yaml_logger.debug('Scale from Lower: {0} to {1}'.format(\
+                            source_command_info['lower'], target_command_info['lower']))
+
+        # take care of deadband
+        if source_command_info['deadband'] != 'None':
+            source_diff -= float(source_command_info['deadband'])
+            command -= float(source_command_info['deadband'])
+            yaml_logger.debug('Scale with source deadband: {0}'.format(source_command_info['deadband']))
+
+        if target_command_info['deadband'] != 'None':
+            target_diff -= float(target_command_info['deadband'])
+            scaled_command += float(target_command_info['deadband'])
+            yaml_logger.debug('Scale with target deadband: {0}'.format(target_command_info['deadband']))
+
+        # calcaulte new command
+        # (U = Upper, same for lower, C - command, D - Deadband)
+        # Dt added above
+        # Cs - Ds  _   Ct - Dt
+        # -------  _  --------
+        # Us - Ds      Ut - Dt
+        scaled_command += command/source_diff*target_diff
+        yaml_logger.debug("Result: ({0}, True)".format(scaled_command))
+
+        return scaled_command, True
+
     else:
-        source_diff = float(abs(source_command_info['lower']))
-        target_diff = float(abs(target_command_info['lower']))
-        yaml_logger.debug('Scale from Lower: {0} to {1}'.format(\
-                        source_command_info['lower'], target_command_info['lower']))
+        yaml_logger.warning('We cannot scale command:{4} - SUpper: {0}, SLower:{1}, TUpper:{2}, TLower: {3}'.format(\
+                            source_command_info['lower'], source_command_info['upper'] , \
+                            target_command_info['lower'], target_command_info['upper'], command))
+        return command, False
 
-    if source_command_info['deadband'] != 'None':
-        source_diff -= float(source_command_info['deadband'])
-        command -= float(source_command_info['deadband'])
-        yaml_logger.debug('Scale with source deadband: {0}'.format(source_command_info['deadband']))
-
-    if target_command_info['deadband'] != 'None':
-        target_diff -= float(target_command_info['deadband'])
-        scaled_command += float(target_command_info['deadband'])
-        yaml_logger.debug('Scale with target deadband: {0}'.format(target_command_info['deadband']))
-
-    # calcaulte new command
-    # (U = Upper, same for lower, C - command, D - Deadband)
-    # Dt added above
-    # Cs - Ds  _   Ct - Dt
-    # -------  _  --------
-    # Us - Ds      Ut - Dt
-    scaled_command += command/source_diff*target_diff
-    yaml_logger.debug("Result: ({0}, True)".format(scaled_command))
-
-    return scaled_command, True
 
 
 class TestMethods(unittest.TestCase):
