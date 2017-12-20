@@ -52,17 +52,17 @@ def update_dict_with_flattened_list(target_dict):
 
             target_dict[key] = temp_list
 
-def dict_insert(cur, list, value):
-    if len(list) == 1:
-        if list[0] in cur.keys() and \
-           value not in cur[list[0]]: # don't want any duplicates
-            cur[list[0]].append(value)
+def dict_insert(cur, cur_list, value):
+    if len(cur_list) == 1:
+        if cur_list[0] in cur.keys():
+            if value not in cur[cur_list[0]]: # don't want any duplicates
+                cur[cur_list[0]].append(value)
         else:
-            cur[list[0]] = [value]
+            cur[cur_list[0]] = [value]
         return
-    if not cur.has_key(list[0]):
-        cur[list[0]] = {}
-    dict_insert(cur[list[0]], list[1:], value)
+    if not cur.has_key(cur_list[0]):
+        cur[cur_list[0]] = {}
+    dict_insert(cur[cur_list[0]], cur_list[1:], value)
 
 def dict_get_values_from_key_list(cur, list):
     """
@@ -114,7 +114,7 @@ def get_parameters_in_file(fname, msgTypeList, msg_fields_dict={}):
 
 
 def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj, var_names_list, msg_fields_dict, \
-                                     scope=None, attribute_list=[], limits_dict={}, call_func_list=[]):
+                                     scope=None, attribute_list=[], limits_dict={}, call_func_list=[], call_func_hist=None):
     """
     This function updates msg_fields_dict if attribute(ast_attribute_obj)
     matches variables in var_names_list.
@@ -127,6 +127,9 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
     attribute_list: a.b to ['a','b'], can be feed into the function to bypass 'attribute_in_var_names_list'
     limit_dict: a dictionary of value obj limits
     call_func_list: valid func call that we will save parameters e.g.:['JointTrajectoryPoint']
+    call_func_hist: history of related function call to the variable:
+                       e.g.: Twist(Vector3(-,1,-),....) -> ['Twist', [0, 'Vector3'], 1]
+                       for parameter replacement later
     """
     out_of_bound_list = []
     result = False
@@ -144,7 +147,7 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
             # check limits
             if limits_dict:
                 out_of_bound_tuple = check_limits_wrapper(attribute_list, ast_value_obj.n, limits_dict)
-                if out_of_bound_tuple: out_of_bound_list.append(out_of_bound_tuple)
+                if out_of_bound_tuple: out_of_bound_list.append(out_of_bound_tuple + (ast_value_obj.n, call_func_hist))
 
         elif isinstance(ast_value_obj, ast.Name) and scope:
             if scope.find(ast_value_obj.id):
@@ -154,7 +157,7 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
                 if limits_dict:
                     for value in scope.find(ast_value_obj.id):
                         out_of_bound_tuple = check_limits_wrapper(attribute_list, value, limits_dict)
-                        if out_of_bound_tuple: out_of_bound_list.append(out_of_bound_tuple + (ast_value_obj.id,))
+                        if out_of_bound_tuple: out_of_bound_list.append(out_of_bound_tuple + (ast_value_obj.id, call_func_hist))
 
         elif isinstance(ast_value_obj, ast.List) and scope:
             parameters_logger.debug('List elts: {0}, ctx: {1}'.format(ast_value_obj.elts, ast_value_obj.ctx))
@@ -163,7 +166,7 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
                 #recursive for different fields
                 check_and_save_attribute_and_value_to_dict(None, ast_elts_obj, var_names_list, msg_fields_dict, \
                                      scope=scope, attribute_list=attribute_list, limits_dict=limits_dict,
-                                     call_func_list=call_func_list)
+                                     call_func_list=call_func_list, call_func_hist=call_func_hist)
 
         elif isinstance(ast_value_obj, ast.Call) and scope:
 
@@ -180,7 +183,7 @@ def check_and_save_attribute_and_value_to_dict(ast_attribute_obj, ast_value_obj,
                 for ast_keywords_obj in ast_value_obj.keywords:
                     check_and_save_attribute_and_value_to_dict(None, ast_keywords_obj.value, var_names_list, msg_fields_dict, \
                                          scope=scope, attribute_list=attribute_list + [ast_keywords_obj.arg], limits_dict=limits_dict,\
-                                         call_func_list=call_func_list)
+                                         call_func_list=call_func_list, call_func_hist=call_func_hist)
 
                 parameters_logger.debug("Call Func name:{0}, Args:{1}, Keywords:{2}".format(\
                                           callvisitor.name, ast_value_obj.args, ast_value_obj.keywords))
@@ -202,16 +205,18 @@ def check_limits_wrapper(attribute_list, value, limits_dict):
     """
     limits = dict_get_values_from_key_list(limits_dict, attribute_list)
     lower_limit, upper_limit = limits['lower'], limits['upper']
-    if lower_limit > value:
+
+    if limits['lower'] != 'None' and lower_limit > value:
         parameters_logger.warning("{0} value: {1} is below the lower limit: {2}".format('.'.join(attribute_list), value, lower_limit))
         return (attribute_list, 'lower', lower_limit, value)
 
-    if upper_limit < value:
+    if limits['upper'] != 'None' and upper_limit < value:
         parameters_logger.warning("{0} value: {1} is above the upper limit: {2}".format('.'.join(attribute_list), value, upper_limit))
         return (attribute_list, 'upper', upper_limit, value)
 
-    parameters_logger.info("{0} value: {1} is within the lower limit: {2} and the upper limit: {3}".format(\
-                            '.'.join(attribute_list), value, lower_limit, upper_limit))
+    if limits['lower'] != 'None' and limits['upper'] != 'None':
+        parameters_logger.info("{0} value: {1} is within the lower limit: {2} and the upper limit: {3}".format(\
+                                '.'.join(attribute_list), value, lower_limit, upper_limit))
     return None
 
 
@@ -246,6 +251,22 @@ class ROSParameterVisitor(ast.NodeVisitor):
         self.function_def[node.name]=[]
         for arg in node.args.args:
             self.function_def[node.name].append(arg.id)
+
+        # run Another ROSParameterVisitor in this?!
+
+        self.generic_visit(node)
+
+    def visit_Call(self, node):
+        callvisitor = topics_in_file.FuncCallVisitor()
+        callvisitor.visit(node.func)
+
+        if callvisitor.name in self.msgTypeList:
+            ####################
+            ### Instantiation ##
+            ####################
+            # Twist msg
+            if 'Twist' in callvisitor.name and len(node.args) == 2:
+                self.save_vel_instantiation(node.args)
 
 
         self.generic_visit(node)
@@ -311,14 +332,14 @@ class ROSParameterVisitor(ast.NodeVisitor):
 
         # assign target is a list
         elif isinstance(node.value, ast.ListComp):
-            parameters_logger.warning('NEEDS TO BE DONE: assign target is a listComp. node target[0]: {0}'.format(node.targets[0]))
+            parameters_logger.debug('NEEDS TO BE DONE: assign target is a listComp. node target[0]: {0}'.format(node.targets[0]))
 
         else:
             if len(node.targets) == 1:
-                parameters_logger.warning("This assignment is not handled: target: {0}, value: {1}".format(\
+                parameters_logger.debug("This assignment is not handled: target: {0}, value: {1}".format(\
                                             type(node.targets[0]), type(node.value)))
             else:
-                 parameters_logger.warning("This assignment is not handled: target: {0}, value: {1}".format(\
+                 parameters_logger.debug("This assignment is not handled: target: {0}, value: {1}".format(\
                                             type(node.targets), type(node.value)))
 
 
@@ -336,7 +357,7 @@ class ROSParameterVisitor(ast.NodeVisitor):
                 # lienar x, y, z
                 self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(None, ast_value_obj, self.var_names_list, self.msg_fields_dict, \
                     scope=self.scopes[0], attribute_list=['linear', attribute_field[idx]], limits_dict=self.limits_dict,\
-                    call_func_list=self.possible_subcall_func_list))
+                    call_func_list=self.possible_subcall_func_list, call_func_hist=['Twist', [0, 'Vector3'], idx]))
 
                 # TODO: get line number and replace later?
 
@@ -348,7 +369,7 @@ class ROSParameterVisitor(ast.NodeVisitor):
                 # angular x, y, z
                self.out_of_bound_list.extend(check_and_save_attribute_and_value_to_dict(None, ast_value_obj, self.var_names_list, self.msg_fields_dict, \
                     scope=self.scopes[0], attribute_list=['angular', attribute_field[idx]], limits_dict=self.limits_dict,\
-                    call_func_list=self.possible_subcall_func_list))
+                    call_func_list=self.possible_subcall_func_list, call_func_hist=['Twist', [1, 'Vector3'], idx]))
 
 
 
