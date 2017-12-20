@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import ast
+import getpass
+import copy
 
 # see if we can do active check with rostopic
 try:
@@ -84,67 +86,158 @@ def replace_topic(red_obj, channel_type, target_topic_dict):
                 # throw a warning
                 replace_logger.warning('{0} is not found and thus not replaced!'.format(msg_type))
 
+def get_value_from_node(ast_value_node):
+     # get value from node
+    if isinstance(ast_value_node, redbaron.nodes.IntNode) or \
+       isinstance(ast_value_node, redbaron.nodes.FloatNode):
+        ast_value = ast.literal_eval(ast_value_node.value)
 
-def replace_parameters(red_obj, out_of_bound_list):
+    elif isinstance(ast_value_node, redbaron.nodes.UnitaryOperatorNode):
+        # get the full value 'operator' + 'value'
+        ast_value = ast.literal_eval(ast_value_node.value + ast_value_node.target.value)
+
+    else:
+        replace_logger.warning("We don't know how to get evaluate this value: {0}".format(ast_value_node)) #.help(deep=True)
+        ast_value = None
+
+    return ast_value
+
+def recursive_find_call_names(red_obj, out_of_bound_list):
     """
-    out_of_bound_list = [attribute_list, limit_violation, replace_value, cur_value, var_name]
+    This function recursively find the cur_value to replace based on call_name_list
+    out_of_bound_list = [attribute_list, limit_violation, replace_value, cur_value, var_name, call_name_list]
+    call_name_list example: ['Twist', [0, 'Vector3'], 0]
+    code example: self.move(Twist(Vector3(0.5, 0, 0), Vector3(0, 0 ,0)))
+
     """
-    replace_logger.debug('out_of_bound_list: {0}'.format(out_of_bound_list))
+    replace_logger.log(8, 'out_of_bound_list: {0}'.format(out_of_bound_list))
     var_name = out_of_bound_list[0][4]
     cur_value = out_of_bound_list[0][3]
     replace_value = out_of_bound_list[0][2]
+    call_name_list = out_of_bound_list[0][5]
 
-    # finding all calls (e.g publishers/subscribers)
-    for assignmentNode in red_obj.find_all("AssignmentNode"):
+    for atomtrailersNode in red_obj.find_all("AtomtrailersNode"):
+        # AtomtrailersNode -> NameNode
+        #                  -> CallNode -> CallArgumentNode (target, value)-> AtomtrailersNode
+        if atomtrailersNode.value[0].find("NameNode", value=call_name_list[0], recursive=False):
 
-        # check if it contains channel_type (only direct children)
-        if assignmentNode.target.find("NameNode", value=var_name, recursive=False):
+            # need to keep going down the node
+            if len(call_name_list) > 2:
+                # manipulate call_name_list
+                new_out_of_bound_list = copy.deepcopy(out_of_bound_list)
+                callArg_idx = call_name_list[1][0]
+                new_out_of_bound_list[0][5][1] = new_out_of_bound_list[0][5][1][1]
+                new_out_of_bound_list[0][5].pop(0) # remove first element
 
-            # int and float replacement
-            if isinstance(assignmentNode.value, redbaron.nodes.IntNode) or \
-               isinstance(assignmentNode.value, redbaron.nodes.FloatNode) or \
-               isinstance(assignmentNode.value, redbaron.nodes.StringNode):
+                # go to the next level
+                if len(atomtrailersNode.value) >= 2 and len(atomtrailersNode.value[1].value) >= callArg_idx+1:
+                    recursive_find_call_names(atomtrailersNode.value[1].value[callArg_idx],\
+                        new_out_of_bound_list)
 
-                if ast.literal_eval(assignmentNode.value.value) == cur_value:
-                    replace_logger.debug("value match: {0}, var_name: {1}, cur_value: {2}".format(assignmentNode, var_name, cur_value))
+            else:
+                # process and replace value
+                callArg_idx = call_name_list[1]
+                ast_value_node = atomtrailersNode.value[1].value[callArg_idx].value
 
-                    # replace value
-                    assignmentNode.value.value = str(replace_value)
-                    replace_logger.info("Replaced value in {0}: {1} with {2}".format(assignmentNode, cur_value, replace_value))
+                # get value from node
+                ast_value = get_value_from_node(ast_value_node)
 
-            # list replacement
-            elif isinstance(assignmentNode.value, redbaron.nodes.ListNode):
-                valid_list = True
-                redbaron_list = []
+                # atomtrailersNode.value[1] = CallNode
+                # atomtrailersNode.value[1].value = CallArgumentNode
+                # atomtrailersNode.value[1].value[callArg_idx].value = IntNode
+                if ast_value == cur_value:
+                    atomtrailersNode.value[1].value[callArg_idx].value = str(replace_value)
+                    replace_logger.info("Replaced value in {0}: {1} with {2}".format(atomtrailersNode, cur_value, replace_value))
+                else:
+                    replace_logger.debug("DID NOT replace value in {0}: {1} with {2} in field {3}".format(\
+                        atomtrailersNode, cur_value, replace_value, call_name_list))
 
-                # first check the list is all floats or ints
-                for red_obj in assignmentNode.value.value:
-                    if isinstance(red_obj, redbaron.nodes.IntNode) or \
-                        isinstance(red_obj, redbaron.nodes.FloatNode) or \
-                        isinstance(red_obj, redbaron.nodes.StringNode):
-                        redbaron_list.append(ast.literal_eval(red_obj.value))
 
-                    elif isinstance(red_obj, redbaron.nodes.UnitaryOperatorNode):
-                        # get the full value 'operator' + 'value'
-                        redbaron_list.append(ast.literal_eval(red_obj.value + red_obj.target.value))
+def replace_parameters(red_obj, out_of_bound_list):
+    """
+    out_of_bound_list = [(attribute_list, limit_violation, replace_value, cur_value, var_name, call_name_list)]
+    """
+    attribute_list = out_of_bound_list[0][0]
+    var_name = out_of_bound_list[0][4]
+    cur_value = out_of_bound_list[0][3]
+    replace_value = out_of_bound_list[0][2]
+    call_name_list = out_of_bound_list[0][5]
 
-                    else:
-                        valid_list = False
-                        break
+    # mainly in instantiation
+    if isinstance(var_name, float) or isinstance(var_name, int):
+        # checking replacement with calllist
+        if call_name_list is not None:
+            recursive_find_call_names(red_obj, out_of_bound_list)
 
-                # check if it's the same as cur_value
-                if valid_list and redbaron_list:
-                    replace_logger.debug('Same:{0}: redbaron_list:{1}, cur_value:{2}.'.format(\
-                        redbaron_list == cur_value, redbaron_list, cur_value))
+    elif isinstance(var_name, str):
+        replace_logger.debug('out_of_bound_list: {0}'.format(out_of_bound_list))
+        # finding all calls (e.g publishers/subscribers)
+        for assignmentNode in red_obj.find_all("AssignmentNode"):
 
-                    # check if the assignment is the same
-                    if redbaron_list == cur_value:
+            # check if it contains channel_type (only direct children)
+            if assignmentNode.target.find("NameNode", value=var_name, recursive=False):
+
+                # int and float replacement
+                if isinstance(assignmentNode.value, redbaron.nodes.IntNode) or \
+                   isinstance(assignmentNode.value, redbaron.nodes.FloatNode) or \
+                   isinstance(assignmentNode.value, redbaron.nodes.StringNode):
+
+                    if ast.literal_eval(assignmentNode.value.value) == cur_value:
+                        replace_logger.debug("value match: {0}, var_name: {1}, cur_value: {2}".format(assignmentNode, var_name, cur_value))
+
                         # replace value
-                        assignmentNode.value.replace(redbaron.RedBaron(str(replace_value))[0])
+                        assignmentNode.value.value = str(replace_value)
                         replace_logger.info("Replaced value in {0}: {1} with {2}".format(assignmentNode, cur_value, replace_value))
 
+                # list replacement
+                elif isinstance(assignmentNode.value, redbaron.nodes.ListNode):
+                    valid_list = True
+                    redbaron_list = []
 
-            # TODO: what if it's an attribute?
+                    # first check the list is all floats or ints
+                    for red_obj in assignmentNode.value.value:
+                        if isinstance(red_obj, redbaron.nodes.IntNode) or \
+                            isinstance(red_obj, redbaron.nodes.FloatNode) or \
+                            isinstance(red_obj, redbaron.nodes.StringNode):
+                            redbaron_list.append(ast.literal_eval(red_obj.value))
+
+                        elif isinstance(red_obj, redbaron.nodes.UnitaryOperatorNode):
+                            # get the full value 'operator' + 'value'
+                            redbaron_list.append(ast.literal_eval(red_obj.value + red_obj.target.value))
+
+                        else:
+                            valid_list = False
+                            break
+
+                    # check if it's the same as cur_value
+                    if valid_list and redbaron_list:
+                        replace_logger.debug('Same:{0}: redbaron_list:{1}, cur_value:{2}.'.format(\
+                            redbaron_list == cur_value, redbaron_list, cur_value))
+
+                        # check if the assignment is the same
+                        if redbaron_list == cur_value:
+                            # replace value
+                            assignmentNode.value.replace(redbaron.RedBaron(str(replace_value))[0])
+                            replace_logger.info("Replaced value in {0}: {1} with {2}".format(assignmentNode, cur_value, replace_value))
+
+
+            # deal with a.b.c = value
+            elif isinstance(assignmentNode.target, redbaron.nodes.AtomtrailersNode):
+                # if variable matches
+                if var_name+'.'+'.'.join(attribute_list) == assignmentNode.target.dumps():
+                    # value matches
+                    ast_value = get_value_from_node(assignmentNode.value)
+
+                    if ast_value == cur_value:
+                        assignmentNode.value = str(replace_value)
+                        replace_logger.info("Replaced value in {0}: {1} with {2}".format(assignmentNode, cur_value, replace_value))
+                    else:
+                        replace_logger.debug("DID NOT replace value in {0}: {1} with {2} with var_name {3}".format(\
+                            assignmentNode, cur_value, replace_value, var_name))
+
+    else:
+        replace_logger.warning("Not Replaced: {0}".format(out_of_bound_list))
+
 
 def save_redbardon_obj_to_file(red_obj, dest_file):
     dirname = os.path.dirname(dest_file)
@@ -154,7 +247,27 @@ def save_redbardon_obj_to_file(red_obj, dest_file):
         f.write(red_obj.dumps())
 
 if __name__ == "__main__":
-    filename = "files/jackal_auto_drive.py"
+    # ???????????????
+    #filename = "files/jackal_auto_drive.py"
+    #out_of_bound_list = [(['linear', 'x'], 'upper', 0.2, 0.3, 'vel', None)]
+
+    filename_list = []
+    out_of_bound_list_list =[]
+
+    #out_of_bound_list = [(attribute_list, limit_violation, replace_value, cur_value, var_name, call_name_list)]
+    # FORMAT: Twist(Vector3(0,0,0),Vector3(0,0,0)) _GOOD
+    filename_list.append('/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/jackal_controller.py'.format(getpass.getuser()))  # Example 2
+    out_of_bound_list_list.append([(['linear', 'x'], '--', 0.2, 0.5, 0.5, ['Twist', [0, 'Vector3'], 0])])
+
+    # FORMAT: variables, e.g: twist.linear.x = vel
+    filename_list.append("files/wander.py")
+    out_of_bound_list_list.append([(['linear', 'x'], 'upper', 0.2, 0.3, 'vel', None)])
+
+    # FORMAT: variables, e.g: twist.linear.x = 0.4
+    filename_list.append("files/wander.py")
+    out_of_bound_list_list.append([(['linear', 'x'], 'upper', 0.2, 0.4, 'twist', None)])
+
+
     dest_file = "files/code.py"
 
     #!! note the special string formating!
@@ -163,14 +276,15 @@ if __name__ == "__main__":
     channel_type = "Publisher"
     #channel_type = "Subscriber"
 
-    # create object
-    red_obj = creat_redbaron_obj(filename)
+    for idx, item in enumerate(out_of_bound_list_list):
 
-    # operations
-    replace_topic(red_obj, channel_type, target_topic_dict)
+        # create object
+        red_obj = creat_redbaron_obj(filename_list[idx])
 
-    out_of_bound_list = [(['linear', 'x'], 'upper', 0.2, 0.3, 'vel')]
-    replace_parameters(red_obj, out_of_bound_list)
+        # operations
+        replace_topic(red_obj, channel_type, target_topic_dict)
 
-    # save to file
-    save_redbardon_obj_to_file(red_obj,dest_file)
+        replace_parameters(red_obj, item)
+
+        # save to file
+        save_redbardon_obj_to_file(red_obj,dest_file)
