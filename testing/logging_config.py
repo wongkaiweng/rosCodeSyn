@@ -69,8 +69,11 @@ def setupLogging(loggerLevel=None):
                 precolor = self.detailed_formatter.format(record)
 
             string =  self.colorize(record.levelname, precolor)
-            header, footer = string.split(record.message)
-            string = string.replace('\n', '\n' + ' '*len(header))
+            try:
+                header, footer = string.split(record.message)
+                string = string.replace('\n', '\n' + ' '*len(header))
+            except:
+                pass
             return string
 
     loggers = {"prob_from_files": logging.getLogger("probs_logger"), \
