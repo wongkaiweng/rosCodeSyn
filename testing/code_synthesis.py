@@ -107,14 +107,14 @@ def convert_joint_traj_commands(red_obj, ast_file, source_robot_name, target_rob
                                     source_robot_name, target_robot_name, joint_list, pos_list, mode='scale_by_length')
 
                                 # replace joint names
-                                #[attribute_list, limit_violation, limit, cur_value, var_name]
+                                #[attribute_list, limit_violation, limit, cur_value, var_name, call_name]
                                 replacement_list = [(['joint_names'], '--', \
-                                                    target_joints, joint_list, joint_names)]
+                                                    target_joints, joint_list, joint_names, None)]
                                 replacement_with_redbaron.replace_parameters(red_obj, replacement_list)
 
                                 # replace joint values
                                 replacement_list = [(['points','positions'], '--', \
-                                                    best_ret_angles, pos_list, positions)]
+                                                    best_ret_angles, pos_list, positions, None)]
                                 replacement_with_redbaron.replace_parameters(red_obj, replacement_list)
 
 
@@ -126,6 +126,9 @@ def convert_velocity_commands(red_obj, ast_file, source_robot_name, target_robot
     source_robot_name: name of the original robot
     target_robot_name: name of the target robot
     """
+    vel_type_idx = {'linear':0, 'angular':1}
+    vel_dir_idx = {'x':0,'y':1,'z':2}
+
     # load velocity limits
     source_vel_lim_dict =  process_limits.make_vel_limit_dic_from_yaml_text(process_yaml.find_robot_YAML(source_robot_name))
     target_vel_lim_dict =  process_limits.make_vel_limit_dic_from_yaml_text(process_yaml.find_robot_YAML(target_robot_name))
@@ -159,15 +162,32 @@ def convert_velocity_commands(red_obj, ast_file, source_robot_name, target_robot
                     if scale_result:
                         # replace twist values
                         # [attribute_list, limit_violation, limit, cur_value, var_name]
-                        replacement_list = [([vel_type, vel_dir], '--', \
-                                            scaled_value, param_value, param)]
-                        replacement_with_redbaron.replace_parameters(red_obj, replacement_list)
+
+                        # get call function history (hard-coded for now, looking for soln)
+                        replacement_list = []
+                        if isinstance(param, str):
+                            # parameter string
+                            replacement_list.append([([vel_type, vel_dir], '--', \
+                                                scaled_value, param_value, param, None)])
+                        else:
+                            # function instantiation
+                            replacement_list.append([([vel_type, vel_dir], '--', \
+                                                scaled_value, param_value, param, \
+                                                ['Twist', [vel_type_idx[vel_type], 'Vector3'], vel_dir_idx[vel_dir]])])
+                            # assignment to e.g: a.b.c = 1
+                            for var_name in rv.var_names_list:
+                                replacement_list.append([([vel_type, vel_dir], '--', \
+                                                          scaled_value, param_value, var_name, None)])
+
+                        for replacement in replacement_list:
+                            replacement_with_redbaron.replace_parameters(red_obj, replacement)
 
 
 
 if __name__ == "__main__":
+    WANDER_EXAMPLE = True
+    JACKAL_CONTROLLER_EXAMPLE = False
     UR5_TO_JACO_EXAMPLE = False
-    MOVE_ROBOT_EXAMPLE = True
 
     TOPIC_REPLACEMENT = True
     PARAMETER_REPLACEMENT = True
@@ -179,10 +199,12 @@ if __name__ == "__main__":
     #|_____/_/\_\__,_|_| |_| |_| .__/|_|\___||___/
     #                          |_|
 
-    if MOVE_ROBOT_EXAMPLE:
+
+    if WANDER_EXAMPLE:
         # (jackal to turtlebot)
+        filename = "files/wander.py"  # Example 1
+        # Others
         #filename = "files/jackal_auto_drive.py"
-        filename = "files/wander.py"
         #filename = "files/move_robot_jaco.py"
         #filename = "files/set_velocity.py"
         dest_file = "files/code.py"
@@ -193,7 +215,18 @@ if __name__ == "__main__":
         else: # linux /windows?
             file_path = '/home/{0}/ros_examples/turtlebot/processed/'.format(getpass.getuser())
 
-    if UR5_TO_JACO_EXAMPLE:
+    elif JACKAL_CONTROLLER_EXAMPLE:
+        # (jackal to turtlebot)
+        filename = '/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/jackal_controller.py'.format(getpass.getuser())  # Example 2
+        dest_file = "files/code.py"
+        source_robot_name = 'jackal'
+        target_robot_name = 'turtlebot'
+        if sys.platform == 'darwin': # Mac OS
+            file_path = '/Users/{0}/Dropbox/ros_examples/turtlebot/processed/'.format(getpass.getuser())
+        else: # linux /windows?
+            file_path = '/home/{0}/ros_examples/turtlebot/processed/'.format(getpass.getuser())
+
+    elif UR5_TO_JACO_EXAMPLE:
         # joint trajectory example (test_move - ur5 to jaco)
         filename = "files/test_move_ur5.py"
         dest_file = "files/code.py"
