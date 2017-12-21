@@ -22,6 +22,7 @@ replace_logger = logging.getLogger("replace_logger")
 def creat_redbaron_obj(filename):
     with open(filename, "r") as f:
         red_obj = redbaron.RedBaron(f.read())
+    f.closed
     return red_obj
 
 
