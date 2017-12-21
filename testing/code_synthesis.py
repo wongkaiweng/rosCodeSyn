@@ -185,9 +185,9 @@ def convert_velocity_commands(red_obj, ast_file, source_robot_name, target_robot
 
 
 if __name__ == "__main__":
-    WANDER_EXAMPLE = True
+    WANDER_EXAMPLE = False
     JACKAL_CONTROLLER_EXAMPLE = False
-    UR5_TO_JACO_EXAMPLE = False
+    UR5_TO_JACO_EXAMPLE = True
 
     TOPIC_REPLACEMENT = True
     PARAMETER_REPLACEMENT = True
@@ -199,26 +199,26 @@ if __name__ == "__main__":
     #|_____/_/\_\__,_|_| |_| |_| .__/|_|\___||___/
     #                          |_|
 
+    # Others
+    #filename = "files/jackal_auto_drive.py"
+    #filename = "files/move_robot_jaco.py"
+    #filename = "files/set_velocity.py"
 
     if WANDER_EXAMPLE:
-        # (jackal to turtlebot)
-        filename = "files/wander.py"  # Example 1
-        # Others
-        #filename = "files/jackal_auto_drive.py"
-        #filename = "files/move_robot_jaco.py"
-        #filename = "files/set_velocity.py"
-        dest_file = "files/code.py"
-        source_robot_name = 'jackal'
-        target_robot_name = 'turtlebot'
+        # (turtlebot to jackal)
+        filename = '/home/{0}/ros_examples/Examples/turtlebot_to_jackal (wander)/wander_turtlebot.py'.format(getpass.getuser())
+        dest_file = '/home/{0}/ros_examples/Examples/turtlebot_to_jackal (wander)/code_generated_wander_jackal.py'.format(getpass.getuser())
+        source_robot_name = 'turtlebot'
+        target_robot_name = 'jackal'
         if sys.platform == 'darwin': # Mac OS
-            file_path = '/Users/{0}/Dropbox/ros_examples/turtlebot/processed/'.format(getpass.getuser())
+            file_path = '/Users/{0}/Dropbox/ros_examples/Jackal/semiprocessed/'.format(getpass.getuser())
         else: # linux /windows?
-            file_path = '/home/{0}/ros_examples/turtlebot/processed/'.format(getpass.getuser())
+            file_path = '/home/{0}/ros_examples/Jackal/semiprocessed/'.format(getpass.getuser())
 
     elif JACKAL_CONTROLLER_EXAMPLE:
         # (jackal to turtlebot)
-        filename = '/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/jackal_controller.py'.format(getpass.getuser())  # Example 2
-        dest_file = "files/code.py"
+        filename = '/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/jackal_controller.py'.format(getpass.getuser())
+        dest_file = '/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/code_generated_turtlebot_controller.py'.format(getpass.getuser())
         source_robot_name = 'jackal'
         target_robot_name = 'turtlebot'
         if sys.platform == 'darwin': # Mac OS
@@ -228,8 +228,8 @@ if __name__ == "__main__":
 
     elif UR5_TO_JACO_EXAMPLE:
         # joint trajectory example (test_move - ur5 to jaco)
-        filename = "files/test_move_ur5.py"
-        dest_file = "files/code.py"
+        filename = "/home/{0}/ros_examples/Examples/ur5_to_jaco (test_move)/test_move_ur5.py".format(getpass.getuser())
+        dest_file = "/home/{0}/ros_examples/Examples/ur5_to_jaco (test_move)/code_generated_test_move_jaco.py".format(getpass.getuser())
         source_robot_name = 'ur5'
         target_robot_name = 'kinova'
         if sys.platform == 'darwin': # Mac OS
