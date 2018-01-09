@@ -27,9 +27,9 @@ def find_channel_name(orig_topic_name, channel_type, msg_type):
 
         # find channel_name
         if channel_type in ['Publisher', 'Subscriber']:
-            return format_topic_name(find_topic_with_type(new_msg_type))
+            topic_name_list = find_topic_with_type(new_msg_type)
         elif channel_type == 'SimpleActionClient':
-            return format_topic_name(find_action_with_type(new_msg_type))
+            topic_name_list = find_action_with_type(new_msg_type)
         else:
             channel_logger.warning('Channel type Invalid: {0}'.format(channel_type))
 
@@ -37,18 +37,18 @@ def find_channel_name(orig_topic_name, channel_type, msg_type):
         # if it's only 'c'
         topic_name_list = find_channel_name_from_short_type(channel_type, msg_type)
 
-        # handle situations where are there multiple topic with the same type
-        if not len(topic_name_list):
-            return None
-        elif len(topic_name_list) == 1:
-            return format_topic_name(topic_name_list[0])
-        else:
-            # prompt user to select
-            topic_name_idx = raw_input("Please select a topic for '{0}' from the list.\n".format(msg_type)+\
-                                       "The original topic was '{0}'. ".format(orig_topic_name)+\
-                                       "Type the NUMBER (e.g.:1):\n{0}\n".format(\
-                                       "\n".join([str(idx+1)+'. '+x for idx,x in enumerate(topic_name_list)])))
-            return format_topic_name(topic_name_list[int(topic_name_idx)-1])
+    # handle situations where are there multiple topic with the same type
+    if not len(topic_name_list):
+        return None
+    elif len(topic_name_list) == 1:
+        return format_topic_name(topic_name_list[0])
+    else:
+        # prompt user to select
+        topic_name_idx = raw_input("Please select a topic for '{0}' from the list.\n".format(msg_type)+\
+                                   "The original topic was '{0}'. ".format(orig_topic_name)+\
+                                   "Type the NUMBER (e.g.:1):\n{0}\n".format(\
+                                   "\n".join([str(idx+1)+'. '+x for idx,x in enumerate(topic_name_list)])))
+        return format_topic_name(topic_name_list[int(topic_name_idx)-1])
 
 def format_topic_name(topic_name):
     if topic_name:
@@ -79,9 +79,9 @@ def find_channel_name_from_short_type(channel_type, msg_type):
         if msg_type == short_type:
             topic_name_list.append(topic_name)
 
-        elif msg_type+'Goal' == short_type and\
+        elif msg_type+'Feedback' == short_type and\
                 channel_type == 'SimpleActionClient':
-            topic_name_list.append(topic_name.replace('/goal',''))
+            topic_name_list.append(topic_name.replace('/feedback',''))
 
     # return list for user to choose
     return topic_name_list
@@ -93,7 +93,7 @@ def find_topic_with_type(topic_type):
     """
     topic_name_list = rostopic.find_by_type(topic_type)
     if topic_name_list:
-        return topic_name_list[0] # only returns the first element
+        return topic_name_list
     else:
         return None
 
@@ -102,9 +102,9 @@ def find_action_with_type(action_type):
     """
     topic_type format: module/type, e.g:'control_msgs/FollowJointTrajectoryAction'
     """
-    action_goal_list = rostopic.find_by_type(action_type+'Goal')
-    if action_goal_list:
-        return action_goal_list[0].replace('/goal','')
+    action_feedback_list = rostopic.find_by_type(action_type+'Feedback')
+    if action_feedback_list:
+        return [x.replace('/feedback','') for x in action_feedback_list]
     else:
         return None
 
