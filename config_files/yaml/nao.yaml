@@ -16,12 +16,12 @@
 # in meters
 linear:
   x:
-    lower: -0.04
-    upper:  0.08
+    lower: -4.0 #-0.04
+    upper: 8.0 # 0.08
     deadband: None
   y:
-    lower: -0.160
-    upper: 0.160
+    lower: -1.6 #-0.160
+    upper: 1.6 #0.160
     deadband: None
   z:
     lower: None
