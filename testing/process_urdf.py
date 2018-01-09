@@ -92,7 +92,8 @@ def find_robot_URDF(robot_name, version='indigo'):
                     'jaco':'jaco_arm.urdf',\
                     'kinova':'j2n6s300.urdf',\
                     'ur5':'ur5.urdf',\
-                    'nao':'nao_robot_v3.urdf'}
+                    'nao':'nao_robot_v3.urdf',\
+                    'pepper':'pepper.urdf'}
 
     # check if robot exists
     if USE_PRECOMPILED_URDFS and robot_name in urdf_dict.keys():
