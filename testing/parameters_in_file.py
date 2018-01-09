@@ -5,6 +5,7 @@ import codegen
 import logging
 from collections import deque
 import traceback
+import getpass
 
 import topics_in_file
 import logging_config
@@ -240,7 +241,8 @@ class ROSParameterVisitor(ast.NodeVisitor):
         self.function_def = {}
 
         if any(['JointTrajectory' in x for x in self.msgTypeList]):
-            self.possible_subcall_func_list = ['trajectory_msgs.msg.JointTrajectory', 'JointTrajectoryPoint']
+            self.possible_subcall_func_list = ['trajectory_msgs.msg.JointTrajectory', 'JointTrajectory', \
+                                               'trajectory_msgs.msg.JointTrajectoryPoint','JointTrajectoryPoint']
         else:
             self.possible_subcall_func_list = []
 

@@ -140,7 +140,7 @@ def find_links_from_joints(target_joint, robot_urdf_obj, base_link="", end_link=
             for (joint, next_link) in children_list:
                 if joint == target_joint:
                     urdf_logger.debug("Find first joint: {0}".format(joint))
-                    return link, next_link\
+                    return link, next_link
 
         urdf_logger.warning("No base_link or end_link found for joint: {0}".format(target_joint))
         return base_link, end_link
@@ -228,7 +228,7 @@ def load_chain_from_URDF(filename):
     return longest_chain, robot_bounds, robot_initial_angles
 
 
-def load_chain_from_URDF_string(urdf_string):
+def load_chain_from_URDF_string(urdf_string, source_joint_list):
     """
     This function loads the URDF string and return
     the longest arm chain, the bounds and the assumed init angle
@@ -255,35 +255,41 @@ def load_chain_from_URDF_string(urdf_string):
     #if not base_link:
     #    base_link = robot.get_root()
 
-    # Find the longest chain
-    longest_chain_list = []
-    base_link_list = []
-    end_link_list  = []
-    longest_chain_idx = 0
-    longest_chain_nOfsegments = 0
-    # Find all possible chains by iterating the link list
-    for potential_base_link in link_list:
-        longest_chain, end_link = find_longest_chain(potential_base_link, link_list, tree, joint_limit_dict)
 
-        #urdf_logger.log(4,"base_link: {0}, end_link: {1}".format(potential_base_link, end_link))
-        if longest_chain:
-            longest_chain_list.append(longest_chain)
-            base_link_list.append(potential_base_link)
-            end_link_list.append(end_link)
+    # try and see if you can find a chain with source joint names
+    source_joint_names_chain = load_chain_from_URDF_string_and_joints(urdf_string, source_joint_list)
+    if source_joint_names_chain:
+        longest_chain = source_joint_names_chain
+    else:
+        # Find the longest chain instead if we cannot find a chain with source joint names
+        longest_chain_list = []
+        base_link_list = []
+        end_link_list  = []
+        longest_chain_idx = 0
+        longest_chain_nOfsegments = 0
+        # Find all possible chains by iterating the link list
+        for potential_base_link in link_list:
+            longest_chain, end_link = find_longest_chain(potential_base_link, link_list, tree, joint_limit_dict)
 
-            # track the longest segment
-            if longest_chain_nOfsegments < longest_chain.getNrOfSegments():
-                longest_chain_nOfsegments = longest_chain.getNrOfSegments()
-                longest_chain_idx = len(longest_chain_list) - 1
+            #urdf_logger.log(4,"base_link: {0}, end_link: {1}".format(potential_base_link, end_link))
+            if longest_chain:
+                longest_chain_list.append(longest_chain)
+                base_link_list.append(potential_base_link)
+                end_link_list.append(end_link)
 
-    # save longest chain
-    urdf_logger.debug('longest_chain from all possible chains: {0}'.format(longest_chain_nOfsegments))
-    longest_chain = longest_chain_list[longest_chain_idx]
-    base_link = base_link_list[longest_chain_idx]
-    end_link = end_link_list[longest_chain_idx]
+                # track the longest segment
+                if longest_chain_nOfsegments < longest_chain.getNrOfSegments():
+                    longest_chain_nOfsegments = longest_chain.getNrOfSegments()
+                    longest_chain_idx = len(longest_chain_list) - 1
 
-    urdf_logger.info("base_link:{0}, end_link:{1}, chain length:{2}".format(\
-        base_link, end_link, longest_chain.getNrOfSegments()))
+        # save longest chain
+        urdf_logger.debug('longest_chain from all possible chains: {0}'.format(longest_chain_nOfsegments))
+        longest_chain = longest_chain_list[longest_chain_idx]
+        base_link = base_link_list[longest_chain_idx]
+        end_link = end_link_list[longest_chain_idx]
+
+        urdf_logger.info("base_link:{0}, end_link:{1}, chain length:{2}".format(\
+            base_link, end_link, longest_chain.getNrOfSegments()))
 
 
     #robot_bounds = [(-360,360), ...]
@@ -473,14 +479,14 @@ def get_source_info(source_robot_name, source_joint_list):
         return None
 
 
-def get_target_info(target_robot_name):
+def get_target_info(target_robot_name, source_joint_list):
     #####################
     # load target robot #
     #####################
     # first get urdf_string
     target_urdf_string = find_robot_URDF(target_robot_name)
     if target_urdf_string:
-        target_chain, target_bounds, target_initial_angles = load_chain_from_URDF_string(target_urdf_string)
+        target_chain, target_bounds, target_initial_angles = load_chain_from_URDF_string(target_urdf_string, source_joint_list)
         return target_chain, target_bounds, target_initial_angles
     else:
         urdf_logger.warning("We cannot get a target URDF!")
@@ -500,7 +506,7 @@ def kinamatic_retargeting(source_chain,source_angles,target_chain,target_initial
 def find_ret_angles_from_source_joints(source_robot_name, target_robot_name, source_joint_list, source_angles, mode='scale_by_unit_length'):
     # get source and target
     source_chain = get_source_info(source_robot_name, source_joint_list)
-    target_chain, target_bounds, target_initial_angles = get_target_info(target_robot_name)
+    target_chain, target_bounds, target_initial_angles = get_target_info(target_robot_name, source_joint_list)
 
     if not (source_chain and target_chain): return None, None
 
