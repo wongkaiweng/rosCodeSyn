@@ -42,28 +42,31 @@ def retrieve_all_topics(file_path, remove_slash=True, call_name='rospy.Publisher
     """
     topic_name_dict = {}
 
-    if not os.path.isdir(file_path):
-        probs_logger.log(4, "{0} is not directory!".format(file_path))
+    if file_path:
+        if not os.path.isdir(file_path):
+            probs_logger.log(4, "{0} is not directory!".format(file_path))
 
-    for root, dirs, files in os.walk(file_path):
-        # traverse all directories
-        for directory in dirs:
-            update_dict_value_list(topic_name_dict, retrieve_all_topics(os.path.join(root, directory), remove_slash, call_name))
+        for root, dirs, files in os.walk(file_path):
+            # traverse all directories
+            for directory in dirs:
+                update_dict_value_list(topic_name_dict, retrieve_all_topics(os.path.join(root, directory), remove_slash, call_name))
 
-        # find all files
-        for file in files:
+            # find all files
+            for file in files:
 
-            if file.endswith(".py"):
-                # get all topics in file
-                file_topic_name_dict = topics_in_file.get_topics_in_file(os.path.join(root, file), call_name)
+                if file.endswith(".py"):
+                    # get all topics in file
+                    file_topic_name_dict = topics_in_file.get_topics_in_file(os.path.join(root, file), call_name)
 
-                # remove leading slash
-                if remove_slash:
-                    for key, item_list in file_topic_name_dict.iteritems():
-                        file_topic_name_dict[key] = [re.sub("^/|/$", "", s) for s in item_list]
+                    # remove leading slash
+                    if remove_slash:
+                        for key, item_list in file_topic_name_dict.iteritems():
+                            file_topic_name_dict[key] = [re.sub("^/|/$", "", s) for s in item_list]
 
-                # combine dicts and store new fields
-                update_dict_value_list(topic_name_dict, file_topic_name_dict)
+                    # combine dicts and store new fields
+                    update_dict_value_list(topic_name_dict, file_topic_name_dict)
+    else:
+        probs_logger.warning('File Path: {0} is not valid! Not retrieving topics.'.format(file_path))
 
     return topic_name_dict
 
