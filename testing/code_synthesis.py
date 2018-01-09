@@ -187,7 +187,8 @@ def convert_velocity_commands(red_obj, ast_file, source_robot_name, target_robot
 if __name__ == "__main__":
     WANDER_EXAMPLE = False
     JACKAL_CONTROLLER_EXAMPLE = False
-    UR5_TO_JACO_EXAMPLE = True
+    UR5_TO_JACO_EXAMPLE = False
+    WAVE_EXAMPLE = True
 
     TOPIC_REPLACEMENT = True
     PARAMETER_REPLACEMENT = True
@@ -236,6 +237,17 @@ if __name__ == "__main__":
             file_path = '/Users/{0}/Dropbox/ros_examples/jaco/semiprocessed/'.format(getpass.getuser())
         else: # linux /windows?
             file_path = '/home/{0}/ros_examples/jaco/semiprocessed/'.format(getpass.getuser())
+
+    elif WAVE_EXAMPLE:
+        # wave example (pepper to nao)
+        filename = "/home/{0}/ros_examples/Examples/pepper_to_nao (wave)/wave_pepper.py".format(getpass.getuser())
+        dest_file = "/home/{0}/ros_examples/Examples/pepper_to_nao (wave)/code_generated_wave_nao.py".format(getpass.getuser())
+        source_robot_name = 'pepper'
+        target_robot_name = 'nao'
+        if sys.platform == 'darwin': # Mac OS
+            file_path = '/Users/{0}/Dropbox/ros_examples/nao/'.format(getpass.getuser())
+        else: # linux /windows?
+            file_path = '/home/{0}/ros_examples/nao/'.format(getpass.getuser())
 
     #  ____          _        ____              _   _               _
     # / ___|___   __| | ___  / ___| _   _ _ __ | |_| |__   ___  ___(_)___
