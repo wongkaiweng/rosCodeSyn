@@ -18,9 +18,11 @@ if LOG_CLEAN:
     parameters_in_file_level = OVERALL_LEVEL
     process_limits_level = OVERALL_LEVEL
     process_urdf_level = OVERALL_LEVEL
+    process_srdf_level = OVERALL_LEVEL
     code_synthesis_level = OVERALL_LEVEL
     find_active_channels_level = OVERALL_LEVEL
     process_yaml_level = OVERALL_LEVEL
+    moveit_in_file_level = OVERALL_LEVEL
 else:
     prob_from_files_level = 'DEBUG'
     replacement_with_redbaron_level = 'DEBUG'
@@ -28,9 +30,11 @@ else:
     parameters_in_file_level = 'DEBUG'
     process_limits_level = 'DEBUG'
     process_urdf_level = 'DEBUG'
+    process_srdf_level = 'DEBUG'
     code_synthesis_level = 'DEBUG'
     find_active_channels_level = 'DEBUG'
     process_yaml_level = 'DEBUG'
+    moveit_in_file_level = 'DEBUG'
 
 loggerLevel = {"prob_from_files":prob_from_files_level,
                "replacement_with_redbaron":replacement_with_redbaron_level,
@@ -38,9 +42,11 @@ loggerLevel = {"prob_from_files":prob_from_files_level,
                "parameters_in_file":parameters_in_file_level,
                "process_limits":process_limits_level,
                "process_urdf":process_urdf_level,
+               "process_srdf": process_srdf_level,
                "code_synthesis":code_synthesis_level,
                "find_active_channels":find_active_channels_level,
-               "process_yaml":process_yaml_level}
+               "process_yaml":process_yaml_level,
+               "moveit_in_file": moveit_in_file_level}
 
 def setupLogging(loggerLevel=None):
     # Set up loggers for printing error messages
@@ -82,9 +88,11 @@ def setupLogging(loggerLevel=None):
                "parameters_in_file": logging.getLogger("parameters_logger"),\
                "process_limits":logging.getLogger("limits_logger"),\
                "process_urdf":logging.getLogger("urdf_logger"),\
+               "process_srdf": logging.getLogger("srdf_logger"),\
                "code_synthesis":logging.getLogger("synthesis_logger"),\
                "find_active_channels":logging.getLogger("channel_logger"),\
-               "process_yaml":logging.getLogger("yaml_logger")}
+               "process_yaml":logging.getLogger("yaml_logger"),\
+               "moveit_in_file": logging.getLogger("moveit_logger")}
 
     h = logging.StreamHandler()
     f = ColorLogFormatter()

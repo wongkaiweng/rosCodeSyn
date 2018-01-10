@@ -5,7 +5,9 @@ import logging
 
 import prob_from_files
 import parameters_in_file
+import moveit_in_file
 import replacement_with_redbaron
+import process_srdf
 import process_urdf
 import process_yaml
 import process_limits
@@ -183,6 +185,51 @@ def convert_velocity_commands(red_obj, ast_file, source_robot_name, target_robot
                             replacement_with_redbaron.replace_parameters(red_obj, replacement)
 
 
+def moveit_replacement(red_obj, ast_file, source_robot_name, target_robot_name):
+    # find all moveit occurances
+    rv = moveit_in_file.ROSMoveItVisitor()
+    rv.visit(ast_file)
+    #print("scopes: All variables: {0}".format(rv.scopes[0]))
+    #print("Parameters of interest: {0}".format(rv.msg_fields_dict))
+    #print("MoveGroupInterface Instantiated: {0}".format(rv.interface_dict))
+    #print("moveToPose frames by objs: {0}".format(rv.pose_cmd_frame_dict))
+
+    # find suitable replacement
+    # load target srdf
+    target_srdf_string  = process_srdf.find_robot_SRDF(target_robot_name)
+    target_srdf_dict = process_srdf.load_srdf_to_dict(target_srdf_string)
+    #srdf_logger.debug('target_srdf_dict:{0}'.format(target_srdf_dict))
+
+    for move_group_obj, group_name in rv.interface_dict.iteritems():
+
+        if rv.scopes[0].find(group_name):
+            source_group_list  = rv.scopes[0].find(group_name)
+        else:
+            source_group_list  = [group_name]
+
+        for source_group in source_group_list:
+
+            if rv.scopes[0].find(rv.pose_cmd_frame_dict[move_group_obj]):
+                source_frame_list  = rv.scopes[0].find(rv.pose_cmd_frame_dict[move_group_obj])
+            else:
+                source_frame_list  = [rv.pose_cmd_frame_dict[move_group_obj]]
+
+            for source_frame in source_frame_list:
+                # find target group name
+                target_group = process_srdf.find_new_group_name_in_srdf_dict(target_srdf_dict, source_group)
+                synthesis_logger.debug('target_group:{0}'.format(target_group))
+
+                # find target frame
+                tip_frame_list =  process_srdf.get_tip_frame_list_from_group_name(target_srdf_dict, target_group)
+                target_frame =  process_srdf.select_tip_frame_from_list(tip_frame_list, source_frame)
+                synthesis_logger.debug('target_frame:{0}'.format(target_frame))
+
+                # replace values
+                # both interface and moveToPose
+                replacement_with_redbaron.replace_moveit_interface(red_obj, rv.interface_dict, {source_group: target_group}, rv.scopes)
+                replacement_with_redbaron.replace_moveit_moveToPose(red_obj, rv.pose_cmd_frame_dict, {source_frame:target_frame}, rv.scopes)
+
+
 
 if __name__ == "__main__":
     WANDER_EXAMPLE = False
@@ -192,6 +239,7 @@ if __name__ == "__main__":
 
     TOPIC_REPLACEMENT = True
     PARAMETER_REPLACEMENT = True
+    MOVEIT_REPLACEMENT = True
 
     # _____                           _
     #| ____|_  ____ _ _ __ ___  _ __ | | ___  ___
@@ -259,6 +307,10 @@ if __name__ == "__main__":
     # create object
     red_obj = replacement_with_redbaron.creat_redbaron_obj(filename)
 
+    with open(filename) as f:
+        ast_file = ast.parse(f.read())
+    f.closed
+
     #######################
     ### Replace Topics ######
     #######################
@@ -274,6 +326,20 @@ if __name__ == "__main__":
 
         red_obj = topic_replacement_by_distribution(file_path, red_obj)
 
+
+    ####################################
+    ### Replace interfaces in moveit ###
+    ####################################
+    if MOVEIT_REPLACEMENT:
+        synthesis_logger.info(" __  __                ___ _   ____            _                                      _   ")
+        synthesis_logger.info("|  \/  | _____   _____|_ _| |_|  _ \ ___ _ __ | | __ _  ___ ___  _ __ ___   ___ _ __ | |_ ")
+        synthesis_logger.info("| |\/| |/ _ \ \ / / _ \| || __| |_) / _ \ '_ \| |/ _` |/ __/ _ \| '_ ` _ \ / _ \ '_ \| __|")
+        synthesis_logger.info("| |  | | (_) \ V /  __/| || |_|  _ <  __/ |_) | | (_| | (_|  __/| | | | | |  __/ | | | |_ ")
+        synthesis_logger.info("|_|  |_|\___/ \_/ \___|___|\__|_| \_\___| .__/|_|\__,_|\___\___||_| |_| |_|\___|_| |_|\__|")
+        synthesis_logger.info("                                        |_|                                              ")
+
+        moveit_replacement(red_obj, ast_file, source_robot_name, target_robot_name)
+
     #######################
     ### Check Limits ######
     #######################
@@ -284,9 +350,6 @@ if __name__ == "__main__":
         synthesis_logger.info("|  __/ (_| | | | (_| | |  _ <  __/ |_) | | (_| | (_|  __/ | | | | |  __/ | | | |_ ")
         synthesis_logger.info("|_|   \__,_|_|  \__,_| |_| \_\___| .__/|_|\__,_|\___\___|_| |_| |_|\___|_| |_|\__|")
         synthesis_logger.info("                                 |_|                                              ")
-
-        with open(filename) as f:
-            ast_file = ast.parse(f.read())
 
         # _____          _     _
         #|_   _|_      _(_)___| |_

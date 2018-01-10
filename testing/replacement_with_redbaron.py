@@ -240,6 +240,85 @@ def replace_parameters(red_obj, out_of_bound_list):
         replace_logger.warning("Not Replaced: {0}".format(out_of_bound_list))
 
 
+def replace_moveit_variable(red_obj, info_dict):
+    # structure - dict keys:
+    # func_type, obj, orig_group_name, target_group_name, func_idx
+    idx = info_dict['func_idx']
+
+    replace_logger.debug('info_dict: {0}'.format(info_dict))
+    # finding all calls (e.g publishers/subscribers)
+    for atomtrailersNode in red_obj.find_all("AtomtrailersNode"):
+
+        # check if it contains channel_type (only direct children)
+        if atomtrailersNode.value.find("NameNode", value=info_dict['func_type'], recursive=False):
+
+            callNode = atomtrailersNode.value.find("CallNode", recursive=False)
+            # AtomtrailersNode -> CallNode -> CallArgumentNode -> NameNode (msgType) or other Nodes
+
+            #######################
+            # replace moveit name #
+            #######################
+            # str replacement
+            if not info_dict['var_name'] and isinstance(callNode.value[idx].value, redbaron.StringNode) and \
+            callNode.value[idx].value.value == info_dict['orig_name']:
+                replace_logger.info("Replaced {0}: {1} with {2}".format(info_dict['func_type'], callNode.value[idx].value,\
+                                                                info_dict['target_name']))
+                # replace topic name with new Name Node
+                callNode.value[idx].value = info_dict['target_name']
+
+
+            # variable replacement
+            elif info_dict['var_name'] and isinstance(callNode.value[idx].value, redbaron.NameNode) and \
+            callNode.value[idx].value.value == info_dict['var_name']:
+
+                # finding all calls (e.g publishers/subscribers)
+                for assignmentNode in red_obj.find_all("AssignmentNode"):
+
+                    # find variables
+                    nameNode = assignmentNode.target.find("NameNode", value=info_dict['var_name'], recursive=False)
+                    if nameNode and isinstance(assignmentNode.value, redbaron.StringNode) and\
+                    assignmentNode.value.value .replace("'",'"') == info_dict['orig_name']:
+
+                        # replace value
+                        assignmentNode.value.value = info_dict['target_name']
+                        replace_logger.info("Replaced value in {0}: {1} with {2}".format(assignmentNode, \
+                                                        info_dict['orig_name'], info_dict['target_name']))
+            else:
+                # throw a warning
+                replace_logger.warning('{0} is not found and thus not replaced!'.format(callNode.value[idx].value))
+
+
+def replace_moveit_moveToPose(red_obj, pose_cmd_frame_dict, frame_replacement_dict, scopes):
+    for group_obj, orig_name in pose_cmd_frame_dict.iteritems():
+        # it's a variable
+        if scopes[0].find(orig_name):
+            for value in scopes[0].find(orig_name):
+                replace_moveit_variable(red_obj,
+                    {'func_type': 'moveToPose', 'obj': group_obj, 'orig_name': '"'+value+'"', \
+                     'target_name': '"'+frame_replacement_dict[value]+'"',\
+                     'func_idx':1, 'var_name': orig_name})
+        else:
+            replace_moveit_variable(red_obj,
+                {'func_type': 'moveToPose', 'obj': group_obj, 'orig_name': '"'+orig_name+'"', \
+                 'target_name': '"'+frame_replacement_dict[orig_name]+'"',\
+                 'func_idx':1, 'var_name': None})
+
+def replace_moveit_interface(red_obj, interface_dict, group_replacement_dict, scopes):
+    for group_obj, orig_name in interface_dict.iteritems():
+        # it's a variable
+        if scopes[0].find(orig_name):
+            for value in scopes[0].find(orig_name):
+                replace_moveit_variable(red_obj,
+                    {'func_type': 'MoveGroupInterface', 'obj': group_obj, 'orig_name': '"'+value+'"', \
+                     'target_name': '"'+group_replacement_dict[value]+'"',\
+                     'func_idx':0, 'var_name': orig_name})
+        else:
+            replace_moveit_variable(red_obj,
+                {'func_type': 'MoveGroupInterface', 'obj': group_obj, 'orig_name': '"'+orig_name+'"', \
+                 'target_name': '"'+group_replacement_dict[orig_name]+'"',\
+                 'func_idx':0, 'var_name': None})
+
+
 def save_redbardon_obj_to_file(red_obj, dest_file):
     dirname = os.path.dirname(dest_file)
     if not os.path.exists(dirname):
@@ -248,10 +327,6 @@ def save_redbardon_obj_to_file(red_obj, dest_file):
         f.write(red_obj.dumps())
 
 if __name__ == "__main__":
-    # ???????????????
-    #filename = "files/jackal_auto_drive.py"
-    #out_of_bound_list = [(['linear', 'x'], 'upper', 0.2, 0.3, 'vel', None)]
-
     filename_list = []
     out_of_bound_list_list =[]
 
@@ -267,6 +342,17 @@ if __name__ == "__main__":
     # FORMAT: variables, e.g: twist.linear.x = 0.4
     filename_list.append("files/wander.py")
     out_of_bound_list_list.append([(['linear', 'x'], 'upper', 0.2, 0.4, 'twist', None)])
+
+    filename_list.append("/home/{0}/ros_examples/Examples/fetch_to_pr2 (wave)/wave_fetch.py".format(getpass.getuser()))
+    out_of_bound_list_list.append({'func_type': 'MoveGroupInterface', \
+                                    'obj':'move_group', 'orig_name': '"arm_with_torso"', 'target_name': '"arms_with_torso"',\
+                                    'func_idx':0, 'var_name': None})
+
+
+    filename_list.append("/home/{0}/ros_examples/Examples/fetch_to_pr2 (wave)/wave_fetch.py".format(getpass.getuser()))
+    out_of_bound_list_list.append({'func_type': 'moveToPose',\
+                                    'obj':'move_group', 'orig_name': '"wrist_roll_link"', 'target_name': '"l_wrist_roll_link"',\
+                                    'func_idx':1, 'var_name': 'gripper_frame'})
 
 
     dest_file = "files/code.py"
@@ -285,7 +371,11 @@ if __name__ == "__main__":
         # operations
         replace_topic(red_obj, channel_type, target_topic_dict)
 
-        replace_parameters(red_obj, item)
+        if isinstance(item, list):
+            replace_parameters(red_obj, item)
+
+        if isinstance(item, dict):
+            replace_moveit_variable(red_obj, item)
 
         # save to file
         save_redbardon_obj_to_file(red_obj,dest_file)

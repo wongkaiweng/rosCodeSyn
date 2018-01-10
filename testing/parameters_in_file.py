@@ -294,6 +294,10 @@ class ROSParameterVisitor(ast.NodeVisitor):
             listVisitor.visit(node.value)
             self.scopes[0].add(node.targets[0].id, listVisitor._name)
 
+        # save variables 'a = "hello" to scope (Name -> str)
+        elif len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and isinstance(node.value, ast.Str):
+            self.scopes[0].add(node.targets[0].id, node.value.s)
 
         # check if it is initializing a msgType object (new Func Obj with msg_type)
         elif isinstance(node.value, ast.Call):
