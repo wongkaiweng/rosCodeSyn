@@ -237,6 +237,7 @@ if __name__ == "__main__":
     UR5_TO_JACO_EXAMPLE = False
     WAVE_EXAMPLE = False
     MOVEIT_WAVE_EXAMPLE = False
+    MOVEIT_PATHPLANNING_EXAMPLE = True
 
     TOPIC_REPLACEMENT = True
     PARAMETER_REPLACEMENT = True
@@ -302,6 +303,18 @@ if __name__ == "__main__":
         # moveit example (fetch to pr2)
         filename = "/home/{0}/ros_examples/Examples/fetch_to_pr2 (wave)/wave_fetch.py".format(getpass.getuser())
         dest_file = "/home/{0}/ros_examples/Examples/fetch_to_pr2 (wave)/code_generated_wave_pr2.py".format(getpass.getuser())
+        source_robot_name = 'fetch'
+        target_robot_name = 'pr2'
+        #if sys.platform == 'darwin': # Mac OS
+        #    file_path = '/Users/{0}/Dropbox/ros_examples/fetch/'.format(getpass.getuser())
+        #else: # linux /windows?
+        #    file_path = '/home/{0}/ros_examples/fetch/'.format(getpass.getuser())
+        file_path = None
+
+    elif MOVEIT_PATHPLANNING_EXAMPLE:
+        # moveit example (fetch to pr2)
+        filename = "/home/{0}/ros_examples/Examples/fetch_to_pr2 (pathplanning)/pathplanning_fetch.py".format(getpass.getuser())
+        dest_file = "/home/{0}/ros_examples/Examples/fetch_to_pr2 (pathplanning)/code_generated_pathplanning_pr2.py".format(getpass.getuser())
         source_robot_name = 'fetch'
         target_robot_name = 'pr2'
         #if sys.platform == 'darwin': # Mac OS
