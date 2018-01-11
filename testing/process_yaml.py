@@ -25,7 +25,9 @@ def find_robot_YAML(robot_name, version='indigo'):
                             'kobuki':'kobuki.yaml',\
                             'nao':'nao.yaml',\
                             'sphero':'sphero.yaml',\
-                            'pepper':'pepper.yaml'}
+                            'pepper':'pepper.yaml',\
+                            'pr2':'pr2.yaml',\
+                            'fetch':'fetch.yaml'}
 
     # check if robot exists
     if robot_name in universial_yaml_dict.keys():
