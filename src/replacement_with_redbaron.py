@@ -5,17 +5,21 @@ import os
 import ast
 import copy
 
-# see if we can do active check with rostopic
-try:
-    import rostopic
-    ROSTOPIC_IMPORT=True
-except:
-    ROSTOPIC_IMPORT=False
-
-import find_active_channels
 
 import logging_config
 replace_logger = logging.getLogger("replace_logger")
+
+# see if we can do active check with rostopic
+try:
+    import rostopic
+    import rosgraph
+    rosgraph.Master('/rostopic').getPid()
+    ROSTOPIC_IMPORT=True
+except:
+    ROSTOPIC_IMPORT=False
+    replace_logger.warning("No active ROS Master Found. We will not search for topics/actions if needed.")
+
+import find_active_channels
 
 def creat_redbaron_obj(filename):
     with open(filename, "r") as f:
