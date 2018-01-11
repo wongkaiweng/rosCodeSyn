@@ -380,7 +380,7 @@ class ROSParameterVisitor(ast.NodeVisitor):
 
 
 if __name__ == "__main__":
-    with open("../turtlebot/processed/wander.py") as f:
+    with open('/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/jackal_controller.py'.format(getpass.getuser())) as f:  # Example 2
         a = ast.parse(f.read())
 
     vel_limits = {'linear':{'x':{'lower': -0.2, 'upper':0.2}, \
