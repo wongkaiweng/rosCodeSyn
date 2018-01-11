@@ -2,6 +2,7 @@ import sys
 import getpass
 import ast
 import logging
+import os
 
 import prob_from_files
 import parameters_in_file
@@ -14,6 +15,10 @@ import process_limits
 
 import logging_config
 synthesis_logger = logging.getLogger("synthesis_logger")
+
+# your codebase dir from param_config.py
+import param_config
+ROS_CODEBASES_DIR = param_config.ROS_CODEBASES_DIR
 
 def topic_replacement_by_distribution(file_path, red_obj):
     """
@@ -197,48 +202,73 @@ def moveit_replacement(red_obj, ast_file, source_robot_name, target_robot_name):
     # find suitable replacement
     # load target srdf
     target_srdf_string  = process_srdf.find_robot_SRDF(target_robot_name)
-    target_srdf_dict = process_srdf.load_srdf_to_dict(target_srdf_string)
-    #srdf_logger.debug('target_srdf_dict:{0}'.format(target_srdf_dict))
 
-    for move_group_obj, group_name in rv.interface_dict.iteritems():
+    if target_srdf_string:
+        target_srdf_dict = process_srdf.load_srdf_to_dict(target_srdf_string)
+        #srdf_logger.debug('target_srdf_dict:{0}'.format(target_srdf_dict))
 
-        if rv.scopes[0].find(group_name):
-            source_group_list  = rv.scopes[0].find(group_name)
-        else:
-            source_group_list  = [group_name]
+        for move_group_obj, group_name in rv.interface_dict.iteritems():
 
-        for source_group in source_group_list:
-
-            if rv.scopes[0].find(rv.pose_cmd_frame_dict[move_group_obj]):
-                source_frame_list  = rv.scopes[0].find(rv.pose_cmd_frame_dict[move_group_obj])
+            if rv.scopes[0].find(group_name):
+                source_group_list  = rv.scopes[0].find(group_name)
             else:
-                source_frame_list  = [rv.pose_cmd_frame_dict[move_group_obj]]
+                source_group_list  = [group_name]
 
-            for source_frame in source_frame_list:
-                # find target group name
-                target_group = process_srdf.find_new_group_name_in_srdf_dict(target_srdf_dict, source_group)
-                synthesis_logger.debug('target_group:{0}'.format(target_group))
+            for source_group in source_group_list:
 
-                # find target frame
-                tip_frame_list =  process_srdf.get_tip_frame_list_from_group_name(target_srdf_dict, target_group)
-                target_frame =  process_srdf.select_tip_frame_from_list(tip_frame_list, source_frame)
-                synthesis_logger.debug('target_frame:{0}'.format(target_frame))
+                if rv.scopes[0].find(rv.pose_cmd_frame_dict[move_group_obj]):
+                    source_frame_list  = rv.scopes[0].find(rv.pose_cmd_frame_dict[move_group_obj])
+                else:
+                    source_frame_list  = [rv.pose_cmd_frame_dict[move_group_obj]]
 
-                # replace values
-                # both interface and moveToPose
-                replacement_with_redbaron.replace_moveit_interface(red_obj, rv.interface_dict, {source_group: target_group}, rv.scopes)
-                replacement_with_redbaron.replace_moveit_moveToPose(red_obj, rv.pose_cmd_frame_dict, {source_frame:target_frame}, rv.scopes)
+                for source_frame in source_frame_list:
+                    # find target group name
+                    target_group = process_srdf.find_new_group_name_in_srdf_dict(target_srdf_dict, source_group)
+                    synthesis_logger.debug('target_group:{0}'.format(target_group))
 
+                    # find target frame
+                    tip_frame_list =  process_srdf.get_tip_frame_list_from_group_name(target_srdf_dict, target_group)
+                    target_frame =  process_srdf.select_tip_frame_from_list(tip_frame_list, source_frame)
+                    synthesis_logger.debug('target_frame:{0}'.format(target_frame))
+
+                    # replace values
+                    # both interface and moveToPose
+                    replacement_with_redbaron.replace_moveit_interface(red_obj, rv.interface_dict, {source_group: target_group}, rv.scopes)
+                    replacement_with_redbaron.replace_moveit_moveToPose(red_obj, rv.pose_cmd_frame_dict, {source_frame:target_frame}, rv.scopes)
+    else:
+        synthesis_logger.warning("No SRDF file for target robot: {0}. Skipping MoveIt Replacement.".format(target_robot_name))
 
 
 if __name__ == "__main__":
+    # Example Selection
     WANDER_EXAMPLE = False
     JACKAL_CONTROLLER_EXAMPLE = False
     UR5_TO_JACO_EXAMPLE = False
     WAVE_EXAMPLE = False
     MOVEIT_WAVE_EXAMPLE = False
-    MOVEIT_PATHPLANNING_EXAMPLE = True
+    MOVEIT_PATHPLANNING_EXAMPLE = False
 
+    example_list = ['wander              - turtlebot to jackal', \
+                    'keyboard control    - jackal to turtlebot',\
+                    'test_move           - ur5 to jaco',\
+                    'wave                - pepper to nao',\
+                    'moveit wave         - fetch to pr2',\
+                    'moveit pathplanning - fetch to pr2']
+
+    # prompt user to select
+    example_idx = raw_input("Please select an example from below. "+\
+                               "Type the NUMBER (e.g.:1):\n{0}\n".format(\
+                               "\n".join([str(idx+1)+'. '+x for idx,x in enumerate(example_list)])))
+
+    if int(example_idx) == 1: WANDER_EXAMPLE = True
+    if int(example_idx) == 2: JACKAL_CONTROLLER_EXAMPLE = True
+    if int(example_idx) == 3: UR5_TO_JACO_EXAMPLE = True
+    if int(example_idx) == 4: WAVE_EXAMPLE = True
+    if int(example_idx) == 5: MOVEIT_WAVE_EXAMPLE = True
+    if int(example_idx) == 6: MOVEIT_PATHPLANNING_EXAMPLE = True
+
+
+    # Replacement Method Settings
     TOPIC_REPLACEMENT = True
     PARAMETER_REPLACEMENT = True
     MOVEIT_REPLACEMENT = True
@@ -250,78 +280,56 @@ if __name__ == "__main__":
     #|_____/_/\_\__,_|_| |_| |_| .__/|_|\___||___/
     #                          |_|
 
-    # Others
-    #filename = "files/jackal_auto_drive.py"
-    #filename = "files/move_robot_jaco.py"
-    #filename = "files/set_velocity.py"
-
     if WANDER_EXAMPLE:
         # (turtlebot to jackal)
-        filename = '/home/{0}/ros_examples/Examples/turtlebot_to_jackal (wander)/wander_turtlebot.py'.format(getpass.getuser())
-        dest_file = '/home/{0}/ros_examples/Examples/turtlebot_to_jackal (wander)/code_generated_wander_jackal.py'.format(getpass.getuser())
+        filename = os.path.dirname(os.path.abspath(__file__))+'/../examples/turtlebot_to_jackal (wander)/wander_turtlebot.py'
+        dest_file = os.path.dirname(os.path.abspath(__file__))+'/../examples/turtlebot_to_jackal (wander)/code_generated_wander_jackal.py'
         source_robot_name = 'turtlebot'
         target_robot_name = 'jackal'
-        if sys.platform == 'darwin': # Mac OS
-            file_path = '/Users/{0}/Dropbox/ros_examples/Jackal/semiprocessed/'.format(getpass.getuser())
-        else: # linux /windows?
-            file_path = '/home/{0}/ros_examples/Jackal/semiprocessed/'.format(getpass.getuser())
+        file_path = ROS_CODEBASES_DIR+'/Jackal/semiprocessed/'
 
     elif JACKAL_CONTROLLER_EXAMPLE:
         # (jackal to turtlebot)
-        filename = '/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/jackal_controller.py'.format(getpass.getuser())
-        dest_file = '/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/code_generated_turtlebot_controller.py'.format(getpass.getuser())
+        filename = os.path.dirname(os.path.abspath(__file__))+'/../examples/jackal_to_turtlebot (controller)/jackal_controller.py'
+        dest_file = os.path.dirname(os.path.abspath(__file__))+'/../examples/jackal_to_turtlebot (controller)/code_generated_turtlebot_controller.py'
         source_robot_name = 'jackal'
         target_robot_name = 'turtlebot'
-        if sys.platform == 'darwin': # Mac OS
-            file_path = '/Users/{0}/Dropbox/ros_examples/turtlebot/processed/'.format(getpass.getuser())
-        else: # linux /windows?
-            file_path = '/home/{0}/ros_examples/turtlebot/processed/'.format(getpass.getuser())
+        file_path = ROS_CODEBASES_DIR+'/turtlebot/processed/'
+
 
     elif UR5_TO_JACO_EXAMPLE:
         # joint trajectory example (test_move - ur5 to jaco)
-        filename = "/home/{0}/ros_examples/Examples/ur5_to_jaco (test_move)/test_move_ur5.py".format(getpass.getuser())
-        dest_file = "/home/{0}/ros_examples/Examples/ur5_to_jaco (test_move)/code_generated_test_move_jaco.py".format(getpass.getuser())
+        filename = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/test_move_ur5.py"
+        dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/code_generated_test_move_jaco.py"
         source_robot_name = 'ur5'
         target_robot_name = 'kinova'
-        if sys.platform == 'darwin': # Mac OS
-            file_path = '/Users/{0}/Dropbox/ros_examples/jaco/semiprocessed/'.format(getpass.getuser())
-        else: # linux /windows?
-            file_path = '/home/{0}/ros_examples/jaco/semiprocessed/'.format(getpass.getuser())
+        file_path = ROS_CODEBASES_DIR+'/jaco/semiprocessed/'
 
     elif WAVE_EXAMPLE:
         # wave example (pepper to nao)
-        filename = "/home/{0}/ros_examples/Examples/pepper_to_nao (wave)/wave_pepper.py".format(getpass.getuser())
-        dest_file = "/home/{0}/ros_examples/Examples/pepper_to_nao (wave)/code_generated_wave_nao.py".format(getpass.getuser())
+        filename = os.path.dirname(os.path.abspath(__file__))+"/../examples/pepper_to_nao (wave)/wave_pepper.py"
+        dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/pepper_to_nao (wave)/code_generated_wave_nao.py"
         source_robot_name = 'pepper'
         target_robot_name = 'nao'
-        if sys.platform == 'darwin': # Mac OS
-            file_path = '/Users/{0}/Dropbox/ros_examples/nao/'.format(getpass.getuser())
-        else: # linux /windows?
-            file_path = '/home/{0}/ros_examples/nao/'.format(getpass.getuser())
+        file_path = ROS_CODEBASES_DIR+'/nao/'
 
     elif MOVEIT_WAVE_EXAMPLE:
         # moveit example (fetch to pr2)
-        filename = "/home/{0}/ros_examples/Examples/fetch_to_pr2 (wave)/wave_fetch.py".format(getpass.getuser())
-        dest_file = "/home/{0}/ros_examples/Examples/fetch_to_pr2 (wave)/code_generated_wave_pr2.py".format(getpass.getuser())
+        filename = os.path.dirname(os.path.abspath(__file__))+"/../examples/fetch_to_pr2 (wave)/wave_fetch.py"
+        dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/fetch_to_pr2 (wave)/code_generated_wave_pr2.py"
         source_robot_name = 'fetch'
         target_robot_name = 'pr2'
-        #if sys.platform == 'darwin': # Mac OS
-        #    file_path = '/Users/{0}/Dropbox/ros_examples/fetch/'.format(getpass.getuser())
-        #else: # linux /windows?
-        #    file_path = '/home/{0}/ros_examples/fetch/'.format(getpass.getuser())
-        file_path = None
+        file_path = ROS_CODEBASES_DIR +'/pr2/semiprocessed/'
+        #file_path = None
 
     elif MOVEIT_PATHPLANNING_EXAMPLE:
         # moveit example (fetch to pr2)
-        filename = "/home/{0}/ros_examples/Examples/fetch_to_pr2 (pathplanning)/pathplanning_fetch.py".format(getpass.getuser())
-        dest_file = "/home/{0}/ros_examples/Examples/fetch_to_pr2 (pathplanning)/code_generated_pathplanning_pr2.py".format(getpass.getuser())
+        filename = os.path.dirname(os.path.abspath(__file__))+"/../examples/fetch_to_pr2 (pathplanning)/pathplanning_fetch.py"
+        dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/fetch_to_pr2 (pathplanning)/code_generated_pathplanning_pr2.py"
         source_robot_name = 'fetch'
         target_robot_name = 'pr2'
-        #if sys.platform == 'darwin': # Mac OS
-        #    file_path = '/Users/{0}/Dropbox/ros_examples/fetch/'.format(getpass.getuser())
-        #else: # linux /windows?
-        #    file_path = '/home/{0}/ros_examples/fetch/'.format(getpass.getuser())
-        file_path = None
+        file_path = ROS_CODEBASES_DIR +'/pr2/semiprocessed/'
+        #file_path = None
 
     #  ____          _        ____              _   _               _
     # / ___|___   __| | ___  / ___| _   _ _ __ | |_| |__   ___  ___(_)___

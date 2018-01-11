@@ -8,7 +8,7 @@ import ConfigParser
 import sys, os
 import time
 
-LOG_CLEAN = False
+LOG_CLEAN = True
 OVERALL_LEVEL = "INFO"
 
 if LOG_CLEAN:

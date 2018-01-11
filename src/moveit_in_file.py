@@ -1,5 +1,5 @@
 import ast
-import getpass
+import os
 import logging
 from collections import deque
 
@@ -121,7 +121,7 @@ class ROSMoveItVisitor(ast.NodeVisitor):
 
 
 if __name__ == "__main__":
-    with open('/home/{0}/ros_examples/Examples/fetch_to_pr2 (wave)/wave_fetch.py'.format(getpass.getuser())) as f:
+    with open(os.path.dirname(os.path.abspath(__file__))+'/../examples/fetch_to_pr2 (wave)/wave_fetch.py') as f:
         a = ast.parse(f.read())
 
 

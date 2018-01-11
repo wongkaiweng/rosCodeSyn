@@ -95,7 +95,7 @@ def find_topic_with_type(topic_type):
     if topic_name_list:
         return topic_name_list
     else:
-        return None
+        return []
 
 
 def find_action_with_type(action_type):
@@ -106,7 +106,7 @@ def find_action_with_type(action_type):
     if action_feedback_list:
         return [x.replace('/feedback','') for x in action_feedback_list]
     else:
-        return None
+        return []
 
 
 def find_service_with_type():

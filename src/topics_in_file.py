@@ -3,6 +3,7 @@ from collections import deque
 import traceback
 import logging
 import sys
+import os
 
 import logging_config
 topics_logger = logging.getLogger("topics_logger")
@@ -285,7 +286,7 @@ def get_topics_in_file(fname, call_name='rospy.Publisher'):
 
 
 if __name__ == "__main__":
-    file = "files/jackal_auto_drive.py"
+    file = os.path.dirname(os.path.abspath(__file__))+"/testfiles/jackal_auto_drive.py"
     with open(file) as f:
         a = ast.parse(f.read())
     call_name = 'rospy.Publisher'

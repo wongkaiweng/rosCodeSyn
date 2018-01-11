@@ -1,7 +1,7 @@
-import getpass
 import logging
 import math
 import unittest
+import os
 
 import process_limits
 
@@ -18,7 +18,7 @@ def find_robot_YAML(robot_name, version='indigo'):
                      'turtlebot':'/opt/ros/{0}/share/turtlebot_bringup/param/defaults/smoother.yaml'.format(version),\
                      'kobuki':'/opt/ros/{0}/share/kobuki_keyop/param/keyop_smoother.yaml'.format(version)}
 
-    path_to_config_folder = '/home/{0}/ros_examples/config_files/yaml/'.format(getpass.getuser())
+    path_to_config_folder = os.path.dirname(os.path.abspath(__file__)) +'/../config_files/yaml/'
     universial_yaml_dict = {'jackal':'jackal.yaml',\
                             'turtlebot':'turtlebot.yaml',\
                             'youbot':'youbot.yaml',\
@@ -101,9 +101,12 @@ def scale_velocity_command(field, command, source_limit_dict, target_limit_dict)
     if (not command and target_command_info['lower'] == 'None') or \
        (command and target_command_info['upper'] == 'None'):
        # only one of them is None
-        yaml_logger.warning("This is not valid. upper: {0} and lower: {1} with command: {2}".format(\
+
+        if command != 0.0:
+            yaml_logger.warning("This is not valid. upper: {0} and lower: {1} with command: {2}".format(\
                              target_command_info['lower'], target_command_info['upper'], command))
         return command, False
+
     elif target_command_info['lower'] == 'None' and target_command_info['upper'] == 'None':
         # this field is not invalid for the target
         yaml_logger.error("This field {0} is not valid for the target robot.".format(field))

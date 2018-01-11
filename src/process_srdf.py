@@ -1,6 +1,7 @@
 import getpass
 import logging
 import difflib
+import os
 import xml.etree.ElementTree as ET
 
 import logging_config
@@ -24,7 +25,7 @@ def find_robot_SRDF(robot_name, version='indigo'):
                      'pepper':'/opt/ros/{0}/share/pepper_moveit_config/config/JulietteY20MP.srdf'.format(version),
                      'kinova':'/home/{0}/ros_ws/src/kinova-ros/kinova_moveit/robot_configs/j2n6s300_moveit_config/config/j2n6s300.srdf'.format(getpass.getuser())}
 
-    path_to_config_folder = '/home/{0}/ros_examples/config_files/srdf/'.format(getpass.getuser())
+    path_to_config_folder = os.path.dirname(os.path.abspath(__file__)) +'/../config_files/srdf/'
     srdf_local_dict = {'pr2':'pr2.srdf',
                        'fetch':'fetch.srdf',
                        'jaco':'jaco.srdf',

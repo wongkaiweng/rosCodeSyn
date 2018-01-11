@@ -2,7 +2,6 @@ import argparse
 import os
 import pandas as pd
 import sys
-import getpass
 import logging
 import re
 import itertools
@@ -12,6 +11,10 @@ import topics_in_file
 import parameters_in_file
 import logging_config
 probs_logger = logging.getLogger("probs_logger")
+
+# your codebase dir from param_config.py
+import param_config
+ROS_CODEBASES_DIR = param_config.ROS_CODEBASES_DIR
 
 def retrieve_topic_names(file_path, msg_type, remove_slash=True, call_name='rospy.Publisher'):
     if isinstance(msg_type, list):
@@ -159,11 +162,7 @@ class TestMethods(unittest.TestCase):
             and store the result as class variable
         """
         super(TestMethods, cls).setUpClass()
-        if sys.platform == 'darwin': # Mac OS
-            cls.file_path = '/Users/wongkaiweng/Dropbox/ros_examples/turtlebot/processed/'
-        else: # linux /windows?
-            cls.file_path = '/home/{0}/ros_examples/turtlebot/processed/'.format(getpass.getuser())
-
+        cls.file_path = ROS_CODEBASES_DIR+'/turtlebot/processed/'
         cls.msg_type_list = ['geometry_msgs.msg.Twist','Twist']
 
         cls.topic_name_dict = retrieve_all_topics(cls.file_path)
@@ -250,14 +249,7 @@ class TestMethods(unittest.TestCase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="find topics with ast")
-    if sys.platform == 'darwin': # Mac OS
-        #file_path = '/Users/{0}/DropboWx/ros_examples/UR5/processed/'.format(getpass.getuser())
-        file_path = '/Users/{0}/Dropbox/ros_examples/turtlebot/processed/'.format(getpass.getuser())
-        #file_path = '/Users/{0}/Dropbox/ros_examples/testing/files/'.format(getpass.getuser())
-
-    else: # linux /windows?
-        file_path = '/home/{0}/ros_examples/turtlebot/processed/'.format(getpass.getuser())
-        #file_path = '/home/{0}/ros_examples/turtlebot/one_file_test/'.format(getpass.getuser())
+    file_path = ROS_CODEBASES_DIR+'/turtlebot/processed/'
 
     parser.add_argument('--file_path', type=str, help='Specify directory of files.', nargs='?', const=file_path, default=file_path)
     parser.add_argument('--msg_type', type=str, help='Specify message type', action='append', nargs='?', default=[])

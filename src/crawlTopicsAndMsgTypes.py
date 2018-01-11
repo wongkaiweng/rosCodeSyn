@@ -5,9 +5,9 @@ import pandas as pd
 import sys
 import getpass
 
-# retrieve all python files
-#for root, dirs, files in os.walk(file_path):
-#    for file in files:
+# your codebase dir from param_config.py
+import param_config
+ROS_CODEBASES_DIR = param_config.ROS_CODEBASES_DIR
 
 re_subscriber = re.compile(r'rospy\.Subscriber\([\'|\"](?P<topic>[\w_/]+)[\'|\"]\s?\,\s?(?P<msgType>[\w_.]+)')  # a pattern for subscriber
 re_publisher = re.compile(r'rospy\.Publisher\([\'|\"](?P<topic>[\w_/]+)[\'|\"]\s?\,\s?(?P<msgType>[\w_.]+)')  # a pattern for publisher
@@ -94,10 +94,7 @@ def plot_distribution(df, target_msg_type, col_name='name'):
 
 def test_pub_and_sub():
     # with '/' at the end
-    if sys.platform == 'darwin':
-        file_path = "/Users/wongkaiweng/Dropbox/ros_examples/turtlebot/processed/"
-    else:
-        file_path = "/home/{0}/ros_examples/turtlebot/processed/".format(getpass.getuser())
+    file_path = ROS_CODEBASES_DIR+"/turtlebot/processed/"
 
     print "----------------\nTurtlebot\n----------------"
 
@@ -114,10 +111,7 @@ def test_pub_and_sub():
 
 
 def test_actionlib():
-    if sys.platform == 'darwin':
-        file_path = "/Users/wongkaiweng/Dropbox/ros_examples/UR5/semiprocessed/"
-    else:
-        file_path = "/home/{0}/ros_examples/UR5/semiprocessed/".format(getpass.getuser())
+    file_path = ROS_CODEBASES_DIR+"/UR5/semiprocessed/"
 
     print "--------------------\nUniversial Robots UR5\n--------------------"
 

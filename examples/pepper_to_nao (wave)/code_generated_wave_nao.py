@@ -18,7 +18,7 @@ import std_msgs.msg
 # Nao Launch
 #roslaunch nao_bringup nao_full_py.launch nao_ip:=localhost:45972 roscore_ip:=localhost
 
-# Pepper Launch
+# Pepper Launch (in Example folder)
 #roslaunch pepper_full_py.launch nao_ip:=localhost:36161 roscore_ip:=localhost
 
 

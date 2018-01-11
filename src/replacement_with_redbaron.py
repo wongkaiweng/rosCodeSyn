@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import ast
-import getpass
 import copy
 
 # see if we can do active check with rostopic
@@ -17,7 +16,6 @@ import find_active_channels
 
 import logging_config
 replace_logger = logging.getLogger("replace_logger")
-
 
 def creat_redbaron_obj(filename):
     with open(filename, "r") as f:
@@ -147,8 +145,8 @@ def recursive_find_call_names(red_obj, out_of_bound_list):
                 # atomtrailersNode.value[1].value = CallArgumentNode
                 # atomtrailersNode.value[1].value[callArg_idx].value = IntNode
                 if ast_value == cur_value:
-                    atomtrailersNode.value[1].value[callArg_idx].value = str(replace_value)
                     replace_logger.info("Replaced value in {0}: {1} with {2}".format(atomtrailersNode, cur_value, replace_value))
+                    atomtrailersNode.value[1].value[callArg_idx].value = str(replace_value)
                 else:
                     replace_logger.debug("DID NOT replace value in {0}: {1} with {2} in field {3}".format(\
                         atomtrailersNode, cur_value, replace_value, call_name_list))
@@ -332,30 +330,30 @@ if __name__ == "__main__":
 
     #out_of_bound_list = [(attribute_list, limit_violation, replace_value, cur_value, var_name, call_name_list)]
     # FORMAT: Twist(Vector3(0,0,0),Vector3(0,0,0)) _GOOD
-    filename_list.append('/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/jackal_controller.py'.format(getpass.getuser()))  # Example 2
+    filename_list.append(os.path.dirname(os.path.abspath(__file__))+'/../examples/jackal_to_turtlebot (controller)/jackal_controller.py')
     out_of_bound_list_list.append([(['linear', 'x'], '--', 0.2, 0.5, 0.5, ['Twist', [0, 'Vector3'], 0])])
 
     # FORMAT: variables, e.g: twist.linear.x = vel
-    filename_list.append("files/wander.py")
+    filename_list.append(os.path.dirname(os.path.abspath(__file__))+"/testfiles/wander.py")
     out_of_bound_list_list.append([(['linear', 'x'], 'upper', 0.2, 0.3, 'vel', None)])
 
     # FORMAT: variables, e.g: twist.linear.x = 0.4
-    filename_list.append("files/wander.py")
+    filename_list.append(os.path.dirname(os.path.abspath(__file__))+"/testfiles/wander.py")
     out_of_bound_list_list.append([(['linear', 'x'], 'upper', 0.2, 0.4, 'twist', None)])
 
-    filename_list.append("/home/{0}/ros_examples/Examples/fetch_to_pr2 (wave)/wave_fetch.py".format(getpass.getuser()))
+    filename_list.append(os.path.dirname(os.path.abspath(__file__))+"/../examples/fetch_to_pr2 (wave)/wave_fetch.py")
     out_of_bound_list_list.append({'func_type': 'MoveGroupInterface', \
                                     'obj':'move_group', 'orig_name': '"arm_with_torso"', 'target_name': '"arms_with_torso"',\
                                     'func_idx':0, 'var_name': None})
 
 
-    filename_list.append("/home/{0}/ros_examples/Examples/fetch_to_pr2 (wave)/wave_fetch.py".format(getpass.getuser()))
+    filename_list.append(os.path.dirname(os.path.abspath(__file__))+"/../examples/fetch_to_pr2 (wave)/wave_fetch.py")
     out_of_bound_list_list.append({'func_type': 'moveToPose',\
                                     'obj':'move_group', 'orig_name': '"wrist_roll_link"', 'target_name': '"l_wrist_roll_link"',\
                                     'func_idx':1, 'var_name': 'gripper_frame'})
 
 
-    dest_file = "files/code.py"
+    dest_file = os.path.dirname(os.path.abspath(__file__))+"/testfiles/code.py"
 
     #!! note the special string formating!
     target_topic_dict = {"Twist": '"/cmd_vel_short"', \

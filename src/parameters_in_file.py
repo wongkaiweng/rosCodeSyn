@@ -5,7 +5,6 @@ import codegen
 import logging
 from collections import deque
 import traceback
-import getpass
 
 import topics_in_file
 import logging_config
@@ -380,7 +379,7 @@ class ROSParameterVisitor(ast.NodeVisitor):
 
 
 if __name__ == "__main__":
-    with open('/home/{0}/ros_examples/Examples/jackal_to_turtlebot (controller)/jackal_controller.py'.format(getpass.getuser())) as f:  # Example 2
+    with open(os.path.dirname(os.path.abspath(__file__))+'/../examples/jackal_to_turtlebot (controller)/jackal_controller.py') as f:  # Example 2
         a = ast.parse(f.read())
 
     vel_limits = {'linear':{'x':{'lower': -0.2, 'upper':0.2}, \
@@ -399,9 +398,8 @@ if __name__ == "__main__":
 
 
     # for arm
-    #with open("files/move_robot_ur5.py") as f:
-    #with open("../Examples/jaco_to_ur5 (move_robot)/move_robot_jaco.py") as f:
-    with open("../Examples/ur5_to_jaco (test_move)/test_move_jaco.py") as f:
+    #with open(os.path.dirname(os.path.abspath(__file__))+"/../Examples/jaco_to_ur5 (move_robot)/move_robot_jaco.py") as f:
+    with open(os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/test_move_jaco.py") as f:
         a = ast.parse(f.read())
     rv = ROSParameterVisitor(['trajectory_msgs.msg.JointTrajectory','JointTrajectory'],\
                               limits_dict={}, msg_fields_dict={})
