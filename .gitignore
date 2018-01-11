@@ -102,3 +102,16 @@ ENV/
 
 # media
 *.mp4
+
+# python juypter notebook
+*.ipynb
+
+# pdf
+*.pdf
+
+# directories
+**/repos
+**/obselete
+**/pdf_and_pics
+**/small_scripts
+
