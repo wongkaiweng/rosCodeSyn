@@ -187,10 +187,9 @@ def replace_parameters(red_obj, out_of_bound_list):
 
                     if ast.literal_eval(assignmentNode.value.value) == cur_value:
                         replace_logger.debug("value match: {0}, var_name: {1}, cur_value: {2}".format(assignmentNode, var_name, cur_value))
-
+                        replace_logger.info("Replaced value in {0}: {1} with {2}".format(assignmentNode, cur_value, replace_value))
                         # replace value
                         assignmentNode.value.value = str(replace_value)
-                        replace_logger.info("Replaced value in {0}: {1} with {2}".format(assignmentNode, cur_value, replace_value))
 
                 # list replacement
                 elif isinstance(assignmentNode.value, redbaron.nodes.ListNode):

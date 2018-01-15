@@ -248,9 +248,9 @@ if __name__ == "__main__":
     MOVEIT_WAVE_EXAMPLE = False
     MOVEIT_PATHPLANNING_EXAMPLE = False
 
-    example_list = ['wander              - turtlebot to jackal', \
-                    'keyboard control    - jackal to turtlebot',\
-                    'test_move           - ur5 to jaco',\
+    example_list = ['keyboard control    - jackal to turtlebot',\
+                    'obstacle avoidance  - turtlebot to jackal', \
+                    'trajectory following- ur5 to jaco',\
                     'wave                - pepper to nao',\
                     'moveit wave         - fetch to pr2',\
                     'moveit pathplanning - fetch to pr2']
@@ -365,11 +365,11 @@ if __name__ == "__main__":
     ### Replace interfaces in moveit ###
     ####################################
     if MOVEIT_REPLACEMENT:
-        synthesis_logger.info(" __  __                ___ _   ____            _                                      _   ")
-        synthesis_logger.info("|  \/  | _____   _____|_ _| |_|  _ \ ___ _ __ | | __ _  ___ ___  _ __ ___   ___ _ __ | |_ ")
-        synthesis_logger.info("| |\/| |/ _ \ \ / / _ \| || __| |_) / _ \ '_ \| |/ _` |/ __/ _ \| '_ ` _ \ / _ \ '_ \| __|")
-        synthesis_logger.info("| |  | | (_) \ V /  __/| || |_|  _ <  __/ |_) | | (_| | (_|  __/| | | | | |  __/ | | | |_ ")
-        synthesis_logger.info("|_|  |_|\___/ \_/ \___|___|\__|_| \_\___| .__/|_|\__,_|\___\___||_| |_| |_|\___|_| |_|\__|")
+        synthesis_logger.info(" __  __                ___ _     ____            _                                      _   ")
+        synthesis_logger.info("|  \/  | _____   _____|_ _| |_  |  _ \ ___ _ __ | | __ _  ___ ___  _ __ ___   ___ _ __ | |_ ")
+        synthesis_logger.info("| |\/| |/ _ \ \ / / _ \| || __| | |_) / _ \ '_ \| |/ _` |/ __/ _ \| '_ ` _ \ / _ \ '_ \| __|")
+        synthesis_logger.info("| |  | | (_) \ V /  __/| || |_  |  _ <  __/ |_) | | (_| | (_|  __/| | | | | |  __/ | | | |_ ")
+        synthesis_logger.info("|_|  |_|\___/ \_/ \___|___|\__| |_| \_\___| .__/|_|\__,_|\___\___||_| |_| |_|\___|_| |_|\__|")
         synthesis_logger.info("                                        |_|                                              ")
 
         moveit_replacement(red_obj, ast_file, source_robot_name, target_robot_name)
