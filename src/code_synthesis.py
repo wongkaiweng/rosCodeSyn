@@ -120,6 +120,7 @@ def convert_joint_traj_commands(red_obj, ast_file, source_robot_name, target_rob
                                 replacement_with_redbaron.replace_parameters(red_obj, replacement_list)
 
                                 # replace joint values
+                                best_ret_angles = best_ret_angles.tolist()
                                 replacement_list = [(['points','positions'], '--', \
                                                     best_ret_angles, pos_list, positions, None)]
                                 replacement_with_redbaron.replace_parameters(red_obj, replacement_list)

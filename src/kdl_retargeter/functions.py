@@ -57,6 +57,25 @@ def retarget(source, source_angles, target, target_initial_angles, target_bounds
     res = fmin_tnc(objective, target_initial_angles, approx_grad=1, maxfun=100000, bounds=target_bounds, disp=0)
     return res
 
+def retarget_with_EE_ratio_optimization(source, source_angles, target, target_initial_angles, target_bounds, mode='links'):
+    '''
+    uses source_angles to set position of source chain, then returns
+    retargeted angles for target chain.
+    source: a KDL chain object
+    source_angles: list of angles: [theta0, theta1,...thetaN]
+    target & target_initial_angles similar
+    target_bounds: list of bounds in the form: [(l1,u1),(l2,u2),...(lN,uN)]
+    '''
+
+    EE_ratio = 1.0
+    eps = forwardKinematics(source,source_angles)
+    #EE_ratio_new = angles_and_EE_ratio_new [-1]
+    #angles = angles_and_EE_ratio_new[:-1]
+    objective = lambda angles_and_EE_ratio_new: cost_joints_ee(angles_and_EE_ratio_new[:-1], target, eps, source, \
+                                                               angles_and_EE_ratio_new [-1], mode)
+    res = fmin_tnc(objective, target_initial_angles + [EE_ratio], approx_grad=1, maxfun=100000, bounds=target_bounds + [(0.0,1.0)], disp=0)
+    return res
+
 def cost_joints_ee(angles, target, eps, source, EE_ratio, mode='links'):
     ''' joint-total-distance cost function, implemented in python,
     mode

@@ -127,7 +127,7 @@ def load_urdf_string(filename):
     f.closed
     return urdf_string
 
-def find_links_from_joints(target_joint, robot_urdf_obj, base_link="", end_link=""):
+def find_links_from_joints(target_joint, robot_urdf_obj, base_link="", end_link="", target_robot=False):
     """
     Find base_link and end_link based on target_joint and
     original base_link and original_end_link
@@ -143,7 +143,8 @@ def find_links_from_joints(target_joint, robot_urdf_obj, base_link="", end_link=
                     urdf_logger.debug("Find first joint: {0}".format(joint))
                     return link, next_link
 
-        urdf_logger.warning("No base_link or end_link found for joint: {0}".format(target_joint))
+        if not target_robot:
+            urdf_logger.warning("No base_link or end_link found for joint: {0}".format(target_joint))
         return base_link, end_link
 
     else: # base_link and end_link is not empty
@@ -153,7 +154,8 @@ def find_links_from_joints(target_joint, robot_urdf_obj, base_link="", end_link=
         if new_base_link: return new_base_link, end_link
         if new_end_link:  return base_link, new_end_link
         if not (new_base_link or new_end_link):
-            urdf_logger.warning("Joint {0} is not found. Returning the same base_link and end_link".format(target_joint))
+            if not target_robot:
+                urdf_logger.warning("Joint {0} is not found. Returning the same base_link and end_link".format(target_joint))
             return base_link, end_link
 
 
@@ -186,7 +188,7 @@ def recursive_map(target_joint, link_joint_map, start_link, map_type='child'):
         urdf_logger.warning('Map type is not "child" or "parent": {0}'.format(map_type))
 
 
-def load_chain_from_URDF_string_and_joints(urdf_string, joint_list):
+def load_chain_from_URDF_string_and_joints(urdf_string, joint_list, target_robot=False):
     """
     This function returns a kinmatic chain based on the URDF string given
     and the list of joints
@@ -197,7 +199,7 @@ def load_chain_from_URDF_string_and_joints(urdf_string, joint_list):
     # check if joint is in it if not then expand both in child or parent
     base_link, end_link = "", ""
     for joint in joint_list:
-        base_link, end_link = find_links_from_joints(joint, robot, base_link, end_link)
+        base_link, end_link = find_links_from_joints(joint, robot, base_link, end_link, target_robot=target_robot)
         urdf_logger.debug("Current base_link:{0}, Current end_link:{1}".format(base_link, end_link))
 
     # return chain
@@ -259,13 +261,14 @@ def load_chain_from_URDF_string(urdf_string, source_joint_list=[]):
 
     # try and see if you can find a chain with source joint names
     if source_joint_list:
-        source_joint_names_chain = load_chain_from_URDF_string_and_joints(urdf_string, source_joint_list)
+        source_joint_names_chain = load_chain_from_URDF_string_and_joints(urdf_string, source_joint_list, target_robot=True)
     else:
         source_joint_names_chain = None
 
     if source_joint_names_chain:
         longest_chain = source_joint_names_chain
     else:
+        urdf_logger.info("No matching source joints found on the target robot. We will find the longest chain for optimization.")
         # Find the longest chain instead if we cannot find a chain with source joint names
         longest_chain_list = []
         base_link_list = []
@@ -399,6 +402,49 @@ def find_best_retarget(source,source_angles,target,target_initial_angles,target_
 
     return best_ret_angles, best_EE_ratio, all_ret_angles
 
+
+def find_best_retarget_with_EE_ratio_optimization(source,source_angles,target,target_initial_angles,target_bounds, mode='scale_by_unit_length'):
+    """
+    Find best retarget result by changing EE ratio: The bias to full arm versus just end
+    effector
+    Inputs:
+    mode: 'original',"joints_only",'links','scale_by_length','scale_by_unit_length'
+    """
+    eps = forwardKinematics(source,source_angles)
+    urdf_logger.info( "Retargeting Mode: {0}".format(mode))
+
+    # track best case
+    best_ret_angles = None
+    best_cost = None
+    best_EE_ratio = None
+    all_ret_angles = []
+    ret = retarget_with_EE_ratio_optimization(source,source_angles,target,target_initial_angles,target_bounds, mode=mode)
+    #import scipy
+    #urdf_logger.info("Result:{0}" .format(scipy.optimize.tnc.RCSTRINGS[ret[2]]))
+    ret_angles = np.array(ret[0].tolist()[:-1])
+    EE_ratio = ret[0].tolist()[-1]
+    ret_ep = forwardKinematics(target,ret_angles)
+    urdf_logger.debug(ret)
+    cost = calculate_rJoints_with_scaled_chain(np.array(ret_ep), target, np.array(eps), source)
+    all_ret_angles.append(ret_angles)
+    urdf_logger.debug( "EE_ratio: {0} Cost: {1}".format(EE_ratio, cost))
+    if not best_cost or best_cost > cost:
+        best_cost = cost
+        best_ret_angles = ret_angles
+        best_EE_ratio = EE_ratio
+
+    urdf_logger.info( "Best EE_ratio: {0} Best Cost: {1}".format(best_EE_ratio, best_cost))
+
+    #urdf_logger.info("Initial Angles: {0}".format(target_initial_angles))
+    #urdf_logger.info("Initial Endpoints:")
+    #urdf_logger.info(forwardKinematics(target,target_initial_angles))
+    urdf_logger.info("Best Retargeted Angles: {0}".format(best_ret_angles))
+    #urdf_logger.info("Target bounds: {0}".format(target_bounds))
+    #urdf_logger.info("Retargeted Endpoints:")
+    #urdf_logger.info(forwardKinematics(target,best_ret_angles))
+
+    return best_ret_angles, best_EE_ratio, all_ret_angles
+
 def plot_retarget(source,source_angles,target,target_initial_angles,target_bounds,all_ret_angles=[], best_EE_ratio=None):
     """
     This function plots the results of find_best_retarget function
@@ -502,7 +548,7 @@ def kinamatic_retargeting(source_chain,source_angles,target_chain,target_initial
     # kinmatic retargeting #
     ########################
     best_ret_angles, best_EE_ratio, all_ret_angles = \
-        find_best_retarget(source_chain,source_angles,target_chain,target_initial_angles,target_bounds, mode=mode)
+        find_best_retarget_with_EE_ratio_optimization(source_chain,source_angles,target_chain,target_initial_angles,target_bounds, mode=mode)
     plot_retarget(source_chain,source_angles,target_chain,target_initial_angles, target_bounds, all_ret_angles, best_EE_ratio)
 
     return best_ret_angles, best_EE_ratio, all_ret_angles
