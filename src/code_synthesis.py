@@ -244,7 +244,8 @@ if __name__ == "__main__":
     # Example Selection
     WANDER_EXAMPLE = False
     JACKAL_CONTROLLER_EXAMPLE = False
-    UR5_TO_JACO_EXAMPLE = False
+    UR5_TO_JACO_6DOF_EXAMPLE = False
+    UR5_TO_JACO_7DOF_EXAMPLE = False
     WAVE_EXAMPLE = False
     MOVEIT_WAVE_EXAMPLE = False
     MOVEIT_PATHPLANNING_EXAMPLE = False
@@ -263,10 +264,11 @@ if __name__ == "__main__":
 
     if int(example_idx) == 1: WANDER_EXAMPLE = True
     if int(example_idx) == 2: JACKAL_CONTROLLER_EXAMPLE = True
-    if int(example_idx) == 3: UR5_TO_JACO_EXAMPLE = True
-    if int(example_idx) == 4: WAVE_EXAMPLE = True
-    if int(example_idx) == 5: MOVEIT_WAVE_EXAMPLE = True
-    if int(example_idx) == 6: MOVEIT_PATHPLANNING_EXAMPLE = True
+    if int(example_idx) == 3: UR5_TO_JACO_6DOF_EXAMPLE = True
+    if int(example_idx) == 4: UR5_TO_JACO_7DOF_EXAMPLE = True
+    if int(example_idx) == 5: WAVE_EXAMPLE = True
+    if int(example_idx) == 6: MOVEIT_WAVE_EXAMPLE = True
+    if int(example_idx) == 7: MOVEIT_PATHPLANNING_EXAMPLE = True
 
 
     # Replacement Method Settings
@@ -298,12 +300,20 @@ if __name__ == "__main__":
         file_path = ROS_CODEBASES_DIR+'/turtlebot/processed/'
 
 
-    elif UR5_TO_JACO_EXAMPLE:
-        # joint trajectory example (test_move - ur5 to jaco)
+    elif UR5_TO_JACO_6DOF_EXAMPLE:
+        # joint trajectory example (test_move - ur5 to jaco_6dof)
         filename = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/test_move_ur5.py"
         dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/code_generated_test_move_jaco.py"
         source_robot_name = 'ur5'
-        target_robot_name = 'kinova'
+        target_robot_name = 'j2n6s300' # kinova 6Dof Jaco
+        file_path = ROS_CODEBASES_DIR+'/jaco/semiprocessed/'
+
+    elif UR5_TO_JACO_7DOF_EXAMPLE:
+        # joint trajectory example (test_move - ur5 to jaco_7dof)
+        filename = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/test_move_ur5.py"
+        dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/code_generated_test_move_7dof.py"
+        source_robot_name = 'ur5'
+        target_robot_name = 'j2s7s300' # kinova 7Dof Jaco
         file_path = ROS_CODEBASES_DIR+'/jaco/semiprocessed/'
 
     elif WAVE_EXAMPLE:

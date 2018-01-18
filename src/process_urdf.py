@@ -82,7 +82,8 @@ def find_robot_URDF(robot_name, version='indigo'):
     XACRO_dict = {'pr2':'/opt/ros/{0}/share/pr2_description/robots/pr2.urdf.xacro'.format(version),\
                   'youbot':'/opt/ros/{0}/share/youbot_description/robots/youbot.urdf.xacro'.format(version),\
                   'jaco':'/opt/ros/{0}/share/jaco_description/urdf/jaco_arm.urdf.xacro'.format(version),\
-                  'kinova':'/home/{0}/ros_ws/src/kinova-ros/kinova_description/urdf/j2s6s300_standalone.xacro'.format(getpass.getuser()),\
+                  'j2n6s300':'/home/{0}/ros_ws/src/kinova-ros/kinova_description/urdf/j2n6s300_standalone.xacro'.format(getpass.getuser()),\
+                  'j2s7s300':'/home/{0}/ros_ws/src/kinova-ros/kinova_description/urdf/j2s7s300_standalone.xacro'.format(getpass.getuser()),\
                   'ur3':'/opt/ros/{0}/share/ur_description/urdf/ur3_robot.urdf.xacro'.format(version),\
                   'ur5':'/opt/ros/{0}/share/ur_description/urdf/ur5_robot.urdf.xacro'.format(version),\
                   'nao':'/opt/ros/{0}/share/nao_description/urdf/nao_robot_v3.urdf.xacro'.format(version),\
@@ -91,10 +92,11 @@ def find_robot_URDF(robot_name, version='indigo'):
     path_to_config_folder = os.path.dirname(os.path.abspath(__file__))+'/../config_files/urdf/'
     urdf_dict = {'youbot':'youbot.urdf',\
                     'jaco':'jaco_arm.urdf',\
-                    'kinova':'j2n6s300.urdf',\
+                    'j2n6s300':'j2n6s300.urdf',\
                     'ur5':'ur5.urdf',\
                     'nao':'nao_robot_v3.urdf',\
-                    'pepper':'pepper.urdf'}
+                    'pepper':'pepper.urdf',\
+                    'j2s7s300':'j2s7s300.urdf'}
 
     # check if robot exists
     if USE_PRECOMPILED_URDFS and robot_name in urdf_dict.keys():
