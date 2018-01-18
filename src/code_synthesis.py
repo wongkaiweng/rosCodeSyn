@@ -3,6 +3,7 @@ import getpass
 import ast
 import logging
 import os
+import numpy as np
 
 import prob_from_files
 import parameters_in_file
@@ -76,6 +77,7 @@ def convert_joint_traj_commands(red_obj, ast_file, source_robot_name, target_rob
     if 'joint_names' in rv.msg_fields_dict.keys():
         for joint_names in rv.msg_fields_dict['joint_names']:
 
+            best_ret_angles = []
             if 'points' in rv.msg_fields_dict.keys() and \
                'positions' in rv.msg_fields_dict['points'].keys():
 
@@ -110,8 +112,11 @@ def convert_joint_traj_commands(red_obj, ast_file, source_robot_name, target_rob
                                 # ++++++++++++++++++++++++++++++++++++++++ #
                                 # ++++++++ MAKE IT MODULAR HERE ++++++++++ #
                                 # ++++++++++++++++++++++++++++++++++++++++ #
+                                #target_joints, best_ret_angles = process_urdf.find_ret_angles_from_source_joints(\
+                                #    source_robot_name, target_robot_name, joint_list, pos_list, mode='scale_by_length')
                                 target_joints, best_ret_angles = process_urdf.find_ret_angles_from_source_joints(\
-                                    source_robot_name, target_robot_name, joint_list, pos_list, mode='scale_by_length')
+                                    source_robot_name, target_robot_name, joint_list, pos_list, \
+                                    mode='scale_by_length', prev_ret_angles=best_ret_angles)
 
                                 # replace joint names
                                 #[attribute_list, limit_violation, limit, cur_value, var_name, call_name]
