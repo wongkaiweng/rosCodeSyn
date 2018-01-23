@@ -78,9 +78,9 @@ def replace_topic(red_obj, channel_type, target_topic_dict):
                 # scan current action channels (topics, actions) for replacement
                 topic_name = find_active_channels.find_channel_name(callNode.value[0].value, channel_type, msg_type)
                 if topic_name:
-                    callNode.value[0].value = topic_name
                     replace_logger.info("Replaced {0}: {1} with {2}".format(channel_type, callNode.value[0].value,\
                                                 topic_name))
+                    callNode.value[0].value = topic_name
                 else:
                     # throw a warning
                     replace_logger.warning('{0} is not found and thus not replaced!'.format(msg_type))
@@ -231,14 +231,50 @@ def replace_parameters(red_obj, out_of_bound_list):
                     ast_value = get_value_from_node(assignmentNode.value)
 
                     if ast_value == cur_value:
-                        assignmentNode.value = str(replace_value)
                         replace_logger.info("Replaced value in {0}: {1} with {2}".format(assignmentNode, cur_value, replace_value))
+                        assignmentNode.value = str(replace_value)
                     else:
                         replace_logger.debug("DID NOT replace value in {0}: {1} with {2} with var_name {3}".format(\
                             assignmentNode, cur_value, replace_value, var_name))
 
     else:
         replace_logger.warning("Not Replaced: {0}".format(out_of_bound_list))
+
+
+def replace_joint_vel_assignment(red_obj, vel_replacement, pos_value=None, vel_value=None):
+    """
+    This function finds velcity assignment in JointTrajectoryPoint msg
+    and replace it with a specific value given by the user
+    pos_value: positions assignment value from code.
+               If it's None, then we don't care what we are replacing
+    vel_value: velocities assignment value from code.
+               If it's None, then we don't care what we are replacing
+    """
+
+    # check call node is JointTrajectoryPoint
+    for atomtrailersNode in red_obj.find_all("AtomtrailersNode", \
+        value=lambda value: value[0].value == 'JointTrajectoryPoint'):
+
+        # find positions NameNode. check that it has a velocity NameNode
+        pos_node = atomtrailersNode.find("NameNode", value='positions')
+        vel_node = atomtrailersNode.find("NameNode", value='velocities')
+        if pos_node and vel_node:
+
+            # with a particular pos and/or vel assignment
+            pos_CallArgumentNode = pos_node.parent_find('CallArgumentNode')
+            vel_CallArgumentNode = vel_node.parent_find('CallArgumentNode')
+
+            # TODO: Equality doesn't work for redbardon. Find an alternative.
+            if (not pos_value or pos_CallArgumentNode.value == pos_value) and\
+                (not vel_value or vel_CallArgumentNode.value == vel_value) :
+
+                # replace velocity command
+                replace_logger.debug("Replaced value in {0}: {1} with {2}".format(\
+                    atomtrailersNode, vel_CallArgumentNode.value, vel_replacement))
+                vel_CallArgumentNode.value.replace(redbaron.RedBaron(\
+                    str(vel_replacement))[0])
+
+    replace_logger.info("Replaced joint velocities to {0}".format(vel_replacement))
 
 
 def replace_moveit_variable(red_obj, info_dict):
@@ -334,26 +370,33 @@ if __name__ == "__main__":
     #out_of_bound_list = [(attribute_list, limit_violation, replace_value, cur_value, var_name, call_name_list)]
     # FORMAT: Twist(Vector3(0,0,0),Vector3(0,0,0)) _GOOD
     filename_list.append(os.path.dirname(os.path.abspath(__file__))+'/../examples/jackal_to_turtlebot (controller)/jackal_controller.py')
-    out_of_bound_list_list.append([(['linear', 'x'], '--', 0.2, 0.5, 0.5, ['Twist', [0, 'Vector3'], 0])])
+    out_of_bound_list_list.append(['para',
+                                    [(['linear', 'x'], '--', 0.2, 0.5, 0.5, ['Twist', [0, 'Vector3'], 0])]])
 
     # FORMAT: variables, e.g: twist.linear.x = vel
     filename_list.append(os.path.dirname(os.path.abspath(__file__))+"/testfiles/wander.py")
-    out_of_bound_list_list.append([(['linear', 'x'], 'upper', 0.2, 0.3, 'vel', None)])
+    out_of_bound_list_list.append(['para',
+                                   [(['linear', 'x'], 'upper', 0.2, 0.3, 'vel', None)]])
 
     # FORMAT: variables, e.g: twist.linear.x = 0.4
     filename_list.append(os.path.dirname(os.path.abspath(__file__))+"/testfiles/wander.py")
-    out_of_bound_list_list.append([(['linear', 'x'], 'upper', 0.2, 0.4, 'twist', None)])
+    out_of_bound_list_list.append(['para',
+                                   [(['linear', 'x'], 'upper', 0.2, 0.4, 'twist', None)]])
 
     filename_list.append(os.path.dirname(os.path.abspath(__file__))+"/../examples/fetch_to_pr2 (wave)/wave_fetch.py")
-    out_of_bound_list_list.append({'func_type': 'MoveGroupInterface', \
+    out_of_bound_list_list.append(['moveit', {'func_type': 'MoveGroupInterface', \
                                     'obj':'move_group', 'orig_name': '"arm_with_torso"', 'target_name': '"arms_with_torso"',\
-                                    'func_idx':0, 'var_name': None})
+                                    'func_idx':0, 'var_name': None}])
 
 
     filename_list.append(os.path.dirname(os.path.abspath(__file__))+"/../examples/fetch_to_pr2 (wave)/wave_fetch.py")
-    out_of_bound_list_list.append({'func_type': 'moveToPose',\
+    out_of_bound_list_list.append(['moveit', {'func_type': 'moveToPose',\
                                     'obj':'move_group', 'orig_name': '"wrist_roll_link"', 'target_name': '"l_wrist_roll_link"',\
-                                    'func_idx':1, 'var_name': 'gripper_frame'})
+                                    'func_idx':1, 'var_name': 'gripper_frame'}])
+
+
+    filename_list.append(os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/test_move_ur5.py")
+    out_of_bound_list_list.append(['vel_zero', []])
 
 
     dest_file = os.path.dirname(os.path.abspath(__file__))+"/testfiles/code.py"
@@ -372,11 +415,15 @@ if __name__ == "__main__":
         # operations
         replace_topic(red_obj, channel_type, target_topic_dict)
 
-        if isinstance(item, list):
-            replace_parameters(red_obj, item)
+        if item[0] == 'para':
+            replace_parameters(red_obj, item[1])
 
-        if isinstance(item, dict):
-            replace_moveit_variable(red_obj, item)
+        elif item[0] == 'moveit':
+            replace_moveit_variable(red_obj, item[1])
+
+        elif item[0] == 'vel_zero':
+            replace_joint_vel_assignment(red_obj, [0]*7), \
+                #pos_value=redbaron.RedBaron('Q1')[0])
 
         # save to file
         save_redbardon_obj_to_file(red_obj,dest_file)

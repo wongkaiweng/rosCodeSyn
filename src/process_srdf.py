@@ -23,7 +23,8 @@ def find_robot_SRDF(robot_name, version='indigo'):
                      'jaco':'/opt/ros/{0}/share/jaco_moveit_config/config/jaco.srdf'.format(version),
                      'nao':'/opt/ros/{0}/share/nao_moveit_config/config/NaoH25V40.srdf'.format(version),
                      'pepper':'/opt/ros/{0}/share/pepper_moveit_config/config/JulietteY20MP.srdf'.format(version),
-                     'kinova':'/home/{0}/ros_ws/src/kinova-ros/kinova_moveit/robot_configs/j2n6s300_moveit_config/config/j2n6s300.srdf'.format(getpass.getuser())}
+                     'j2n6s300':'/home/{0}/ros_ws/src/kinova-ros/kinova_moveit/robot_configs/j2n6s300_moveit_config/config/j2n6s300.srdf'.format(getpass.getuser()),
+                     'j2s7s300':'/home/{0}/ros_ws/src/kinova-ros/kinova_moveit/robot_configs/j2s7s300_moveit_config/config/j2s7s300.srdf'.format(getpass.getuser())}
 
     path_to_config_folder = os.path.dirname(os.path.abspath(__file__)) +'/../config_files/srdf/'
     srdf_local_dict = {'pr2':'pr2.srdf',
@@ -31,7 +32,8 @@ def find_robot_SRDF(robot_name, version='indigo'):
                        'jaco':'jaco.srdf',
                        'nao':'nao.srdf',
                        'pepper':'pepper.srdf',
-                       'kinova':'j2n6s300.srdf'}
+                       'j2n6s300':'j2n6s300.srdf',
+                       'j2s7s300':'j2s7s300.srdf'}
 
     # check if robot exists
     if USE_LOCAL_SRDFS and robot_name in srdf_local_dict.keys():

@@ -124,12 +124,15 @@ def convert_joint_traj_commands(red_obj, ast_file, source_robot_name, target_rob
                                                     target_joints, joint_list, joint_names, None)]
                                 replacement_with_redbaron.replace_parameters(red_obj, replacement_list)
 
-                                # replace joint values
+                                # replace joint position cmds
                                 best_ret_angles = best_ret_angles.tolist()
                                 replacement_list = [(['points','positions'], '--', \
                                                     best_ret_angles, pos_list, positions, None)]
                                 replacement_with_redbaron.replace_parameters(red_obj, replacement_list)
 
+                # replace joint vel cmds to zero
+                replacement_with_redbaron.replace_joint_vel_assignment(\
+                        red_obj, [0.0]*len(best_ret_angles))
 
 def convert_velocity_commands(red_obj, ast_file, source_robot_name, target_robot_name):
     """
@@ -257,7 +260,8 @@ if __name__ == "__main__":
 
     example_list = ['keyboard control    - jackal to turtlebot',\
                     'obstacle avoidance  - turtlebot to jackal', \
-                    'trajectory following- ur5 to jaco',\
+                    'trajectory following- ur5 to jaco_6dof',\
+                    'trajectory following- ur5 to jaco_7dof',\
                     'wave                - pepper to nao',\
                     'moveit wave         - fetch to pr2',\
                     'moveit pathplanning - fetch to pr2']
