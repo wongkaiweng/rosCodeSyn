@@ -312,7 +312,7 @@ if __name__ == "__main__":
     elif UR5_TO_JACO_6DOF_EXAMPLE:
         # joint trajectory example (test_move - ur5 to jaco_6dof)
         filename = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/test_move_ur5.py"
-        dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/code_generated_test_move_jaco.py"
+        dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/code_generated_test_move_jaco_6dof.py"
         source_robot_name = 'ur5'
         target_robot_name = 'j2n6s300' # kinova 6Dof Jaco
         file_path = ROS_CODEBASES_DIR+'/jaco/semiprocessed/'
@@ -320,7 +320,7 @@ if __name__ == "__main__":
     elif UR5_TO_JACO_7DOF_EXAMPLE:
         # joint trajectory example (test_move - ur5 to jaco_7dof)
         filename = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/test_move_ur5.py"
-        dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/code_generated_test_move_7dof.py"
+        dest_file = os.path.dirname(os.path.abspath(__file__))+"/../examples/ur5_to_jaco (test_move)/code_generated_test_move_jaco_7dof.py"
         source_robot_name = 'ur5'
         target_robot_name = 'j2s7s300' # kinova 7Dof Jaco
         file_path = ROS_CODEBASES_DIR+'/jaco/semiprocessed/'
